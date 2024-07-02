@@ -167,22 +167,13 @@ def allUsers():
 
 @app.route('/addUser', methods=['POST'])
 def addNewUser():
-    member = request.form['member']
+    member = request.form['user']
+    video = request.files['file']
     member_json = json.loads(member)
-    insert_query = 'INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, %s)'
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(insert_query, (member_json['username'].capitalize(), member_json['email'].capitalize(), member_json['password'], member_json['role'].capitalize()))
-        conn.commit()
-    except Exception as e:
-        cursor.close()
-        conn.close()
-        return jsonify({"success": False, "error": str(e)})
-    cursor.close()
-    conn.close()
-    data = get_data_from_table("users")
-    return jsonify({"success": True, "result": data})
+    filename = secure_filename(video.filename)
+    video.save(filename)
+    faceScan(filename)
+    return jsonify({"success": True})
 
 @app.route('/editUser', methods=['POST'])
 def editUser():
@@ -222,4 +213,4 @@ def deleteUser():
     return jsonify({"success": True, "result": data})
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port='8080')
+    app.run(debug=True, host='0.0.0.0', port='8080')
