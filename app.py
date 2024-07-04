@@ -152,12 +152,12 @@ def addMemberFromAnalysis():
 @app.route('/login', methods=['POST'])
 def login():
     users = get_data_from_table("users")
-    username = request.json.get('username')
+    username = request.json.get('email')
     password = request.json.get('password')
     for user in (users):
-        if user["username"].lower() == username.lower() and user["password"] == password:
+        if user["email"].lower() == username.lower() and user["password"] == password:
             token = generate_token()
-            return jsonify({"success": True, "userToken": token, "username": user["username"], "role": user["role"]})
+            return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "role": user["role"]})
     return jsonify({"success": False, "error": "Invalid credentials"})
 
 @app.route('/allUsers', methods=['GET'])
@@ -172,8 +172,22 @@ def addNewUser():
     member_json = json.loads(member)
     filename = secure_filename(video.filename)
     video.save(filename)
-    faceScan(filename)
-    return jsonify({"success": True})
+    res = faceScan(filename)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        req = "INSERT INTO users (nom, prenom, date, email, password, telephone, organisation, poste, role) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
+        frames2db(f'{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}', res, cursor)
+        conn.commit()
+    except Exception as e:
+        cursor.close()
+        conn.close()
+        return jsonify({"success": False, "error": str(e)})
+    cursor.close()
+    conn.close()
+    data = get_data_from_table("users")
+    return jsonify({"success": True, "result": data})
 
 @app.route('/editUser', methods=['POST'])
 def editUser():
@@ -182,8 +196,8 @@ def editUser():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        req = "UPDATE users SET username = %s, email = %s, password = %s, role = %s WHERE id = %s;"
-        cursor.execute(req, (member_json['username'].capitalize(), member_json['email'].capitalize(), member_json['password'], member_json['role'].capitalize(), member_json['id']))
+        req = "UPDATE users SET nom = %s, prenom = %s, date = %s, email = %s, password = %s, telephone = %s, organisation = %s, poste = %s, role = %s WHERE id = %s;"
+        cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['telephone'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), member_json['role'].capitalize(), member_json['id']))
         conn.commit()
     except Exception as e:
         cursor.close()

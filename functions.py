@@ -1,4 +1,4 @@
-import base64, fitz, cv2, os, re, psycopg2, secrets, time
+import base64, fitz, cv2, os, re, psycopg2, secrets
 from mtcnn.mtcnn import MTCNN
 from signFinder import *
 
@@ -10,13 +10,13 @@ def clean():
             os.remove(fichier)
 
 def get_db_connection():
-    """ conn = psycopg2.connect(
+    """conn = psycopg2.connect(
         host="localhost",
         database="postgres",
         user="postgres",
         password="root",
         port=5432
-    ) """
+    )"""
     conn = psycopg2.connect('postgres://avnadmin:AVNS_jJdwHlhkwoHcODhE83V@pg-367c7a2d-amsata2009-bad2.f.aivencloud.com:18480/defaultdb?sslmode=require')
     return conn
 
@@ -75,12 +75,16 @@ def get_data_from_table(table):
         for row in rows:
             data.append({
                 "id": row[0],
-                "username": row[1],
-                "email": row[2],
-                "password": row[3],
-                "role": row[4]
+                "nom": row[1],
+                "prenom": row[2],
+                "date": row[3],
+                "email": row[4],
+                "password": row[5],
+                "telephone": row[6],
+                "organisation": row[7],
+                "poste": row[8],
+                "role": row[9],
             })
-            
     return data
 
 def find_signature(path):
@@ -176,11 +180,19 @@ def faceDetector(frame):
     return None
 
 def faceScan(data):
-    path = "dataset/test/"
     frames = blob_to_mp4(data)
-    for i, frame in enumerate(frames):
+    res = []
+    for _, frame in enumerate(frames):
         frame = faceDetector(frame)
         try:
-            cv2.imwrite(path + f'frame_{i}.jpg', frame)
+            _, encoded_frame = cv2.imencode('.jpg', frame)
+            encoded_frame = base64.b64encode(encoded_frame).decode('utf-8')
+            res.append(encoded_frame)
         except:
             pass
+    return res
+
+def frames2db(user, res, cursor):
+    req = "INSERT INTO trainset (person, picture) VALUES (%s, %s)"
+    for pic in res:
+        cursor.execute(req, (user, pic))
