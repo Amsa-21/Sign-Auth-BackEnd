@@ -199,7 +199,8 @@ def frames2db(user, res, cursor):
         cursor.execute(req, (user, pic))
 
 def refresh_model():
-    data = get_trainset(get_db_connection())
+    conn = get_db_connection()
+    data = get_trainset(conn)
     return get_trained_model(data)
 
 def base64ToImg(base64_string):
@@ -213,7 +214,7 @@ def prediction(face, refresh: bool):
         model, encoder = refresh_model()
     face = base64ToImg(face)
     faceD = faceDetector(face)
-    if faceD is not None: 
+    if faceD is not None:
         model, encoder = refresh_model()
-        return predict_face(face, model, encoder)
+        return predict_face(faceD, model, encoder)
     return "No face detected !"
