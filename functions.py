@@ -1,6 +1,7 @@
-import base64, fitz, cv2, os, re, psycopg2, secrets
+import re, psycopg2, secrets
 from mtcnn.mtcnn import MTCNN
 from signFinder import *
+from model import *
 
 detector = MTCNN()
 
@@ -196,3 +197,23 @@ def frames2db(user, res, cursor):
     req = "INSERT INTO trainset (person, picture) VALUES (%s, %s)"
     for pic in res:
         cursor.execute(req, (user, pic))
+
+def refresh_model():
+    data = get_trainset(get_db_connection())
+    return get_trained_model(data)
+
+def base64ToImg(base64_string):
+    base64_string = base64_string.split(';base64,')[1]
+    image_data = base64.b64decode(base64_string)
+    np_arr = np.frombuffer(image_data, np.uint8)
+    return cv2.cvtColor(cv2.imdecode(np_arr, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB) 
+
+def prediction(face, refresh: bool):
+    if refresh:
+        model, encoder = refresh_model()
+    face = base64ToImg(face)
+    faceD = faceDetector(face)
+    if faceD is not None: 
+        model, encoder = refresh_model()
+        return predict_face(face, model, encoder)
+    return "No face detected !"

@@ -226,5 +226,11 @@ def deleteUser():
     data = get_data_from_table("users")
     return jsonify({"success": True, "result": data})
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    face_img = request.form['img']
+    person = prediction(face_img, refresh=False)
+    return jsonify({"success": True, "person": person})
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port='8080')
