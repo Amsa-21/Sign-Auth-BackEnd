@@ -2,11 +2,11 @@ import chilkat2 #type: ignore
 
 def extractCert(pdf_file):
   if pdf_file.endswith(".pdf")==False:
-    return
+    return {}
   pdf = chilkat2.Pdf()
   success = pdf.LoadFile(pdf_file)
   if success == False:
-    return
+    return {}
   sigInfo = chilkat2.JsonObject()
   numSignatures = pdf.NumSignatures
   cert = chilkat2.Cert()
