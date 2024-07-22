@@ -1,13 +1,16 @@
 import re, psycopg2, secrets
 from mtcnn.mtcnn import MTCNN
+from certificateGenerator import *
 from signFinder import *
+from mailServer import *
+from signServer import *
 from model import *
 
 detector = MTCNN()
 
 def clean():
   for fichier in os.listdir(os.curdir):
-    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg"):
+    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg") or fichier.endswith(".p12"):
       os.remove(fichier)
 
 def get_db_connection():
@@ -85,6 +88,17 @@ def get_data_from_table(table):
         "organisation": row[7],
         "poste": row[8],
         "role": row[9],
+      })
+  elif table == "certificates":
+    for row in rows:
+      data.append({
+        "id": row[0],
+        "person": row[1],
+        "p12": row[2],
+        "certificate": row[3],
+        "private_key": row[4],
+        "public_key": row[5],
+        "digit": row[6]
       })
   return data
 
@@ -222,3 +236,19 @@ def prediction(face, model, encoder, refresh: bool):
     res = predict_face(faceD, model, encoder)
     return img, res
   return None, "No face detected !"
+
+def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
+  try:
+    p12, certificate, private_key, public_key, digit = generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME)
+    insert_query = "INSERT INTO certificates (person, p12, certificate, private_key, public_key, digit) VALUES (%s, %s, %s, %s, %s, %s)"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(insert_query, (id, p12, certificate, private_key, public_key, str(digit)))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    sendEmail(to_address=EMAIL_ADDRESS, digit=digit)
+  except Exception as e:
+    print(e)
+    cursor.close()
+    conn.close()

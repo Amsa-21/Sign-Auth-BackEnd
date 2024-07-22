@@ -10,7 +10,7 @@ app.json.sort_keys = False
 
 clean()
 
-model, encoder = refresh_model()
+# model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
@@ -158,7 +158,7 @@ def login():
   for user in (users):
     if user["email"].lower() == username.lower() and user["password"] == password:
       token = generate_token()
-      return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "role": user["role"]})
+      return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "telephone": user["telephone"], "role": user["role"]})
   return jsonify({"success": False, "error": "Invalid credentials"})
 
 @app.route('/allUsers', methods=['GET'])
@@ -179,16 +179,17 @@ def addNewUser():
   try:
     req = "INSERT INTO users (nom, prenom, date, email, password, telephone, organisation, poste, role) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
     cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
-    frames2db(f'{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}', res, cursor)
+    identity = f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}"
+    frames2db(identity, res, cursor)
     conn.commit()
+    cursor.close()
+    conn.close()
   except Exception as e:
     cursor.close()
     conn.close()
     return jsonify({"success": False, "error": str(e)})
-  cursor.close()
-  conn.close()
-  data = get_data_from_table("users")
-  return jsonify({"success": True, "result": data})
+  create_PKCS(identity, member_json['email'].capitalize(), f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()}", member_json['organisation'].capitalize())
+  return jsonify({"success": True})
 
 @app.route('/editUser', methods=['POST'])
 def editUser():
@@ -230,12 +231,33 @@ def deleteUser():
 @app.route('/predict', methods=['POST'])
 def predict():
   face_img = request.form['image']
-  face, person = prediction(face_img, model, encoder, refresh=False)
-  if face:
-    face = "data:image/jpg;base64," + face
-    return jsonify({"success": True, "person": person, "face": face})
-  else:
+  if model is not None:
+    face, person = prediction(face_img, model, encoder, refresh=False)
+    if face:
+      face = "data:image/jpg;base64," + face
+      return jsonify({"success": True, "person": person, "face": face})
     return jsonify({"success": True, "person": "No face detected", "face": None})
+  return jsonify({"success": True, "person": "No model trained", "face": None})
+
+@app.route('/signPDF', methods=['POST'])
+def sign():
+  file = request.files['fichier']
+  filename = secure_filename(file.filename)
+  file.save(filename)
+  user = request.form['user']
+  code = request.form['code']
+  certs = get_data_from_table("certificates")
+  for cert in  certs:
+    if user == cert["person"] and code == cert["digit"]:
+      success = signPdf(pdf_path=filename, p12=cert["p12"], digit=code)
+      if success:
+        with open ("res.pdf", "rb") as file:
+          data = file.read()
+        print(data)
+        clean()
+        return jsonify({"success": True, "pdfdata": data})
+  clean()
+  return jsonify({"success": False})
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')

@@ -49,18 +49,20 @@ def get_embedding(face_img):
   return yhat[0] # 512D image (1x1x512)
 
 def get_trained_model(data):
-  faceloading = FACELOADING(data)
-  X, Y = faceloading.load_classes()
+  try:
+    faceloading = FACELOADING(data)
+    X, Y = faceloading.load_classes()
 
-  EMBEDDED_X = []
-  for img in X:
-    EMBEDDED_X.append(get_embedding(img))
-  EMBEDDED_X = np.asarray(EMBEDDED_X)
-  encoder.fit(Y)
-  Y_ENCODDED = encoder.transform(Y)
-  model.fit(EMBEDDED_X, Y_ENCODDED)
-  return model, encoder
-
+    EMBEDDED_X = []
+    for img in X:
+      EMBEDDED_X.append(get_embedding(img))
+    EMBEDDED_X = np.asarray(EMBEDDED_X)
+    encoder.fit(Y)
+    Y_ENCODDED = encoder.transform(Y)
+    model.fit(EMBEDDED_X, Y_ENCODDED)
+    return model, encoder
+  except:
+    return None, None
 def predict_face(face, model, encoder):
   if not face.all() == None:
     face_embed = get_embedding(face)

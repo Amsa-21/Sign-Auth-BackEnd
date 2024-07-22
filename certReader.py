@@ -1,4 +1,4 @@
-import chilkat2 #type: ignore
+from signServer import *
 
 def extractCert(pdf_file):
   if pdf_file.endswith(".pdf")==False:
