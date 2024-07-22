@@ -15,10 +15,6 @@ def signPdf(pdf_path, p12, digit):
 
   json.UpdateInt("signingCertificateV2",1)
   json.UpdateInt("signingTime",1)
-
-  json.UpdateBool("timestampToken.enabled",True)
-  json.UpdateString("timestampToken.tsaUrl","https://rfc3161.ai.moda/apple")
-  json.UpdateBool("timestampToken.requestTsaCert",True)
   
   json.UpdateInt("page",1)
   json.UpdateString("appearance.y","bottom")
