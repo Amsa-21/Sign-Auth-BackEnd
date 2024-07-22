@@ -253,5 +253,3 @@ def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
     print(e)
     cursor.close()
     conn.close()
-    
-create_PKCS(id="Amsata DIAGNE 776689197", EMAIL_ADDRESS="Amsata2009@gmail.com", COMMON_NAME="Amsata DIAGNE", ORGANIZATION_NAME="Sonatel")

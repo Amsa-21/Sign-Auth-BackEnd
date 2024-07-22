@@ -255,8 +255,8 @@ def sign():
           data = base64.b64encode(file.read()).decode('utf-8')
         clean()
         return jsonify({"success": True, "pdfdata": data})
-    clean()
-    return jsonify({"success": False, "error": "Code invalide !"})
+  clean()
+  return jsonify({"success": False, "error": "Code invalide !"})
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')
