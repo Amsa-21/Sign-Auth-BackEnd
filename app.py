@@ -251,13 +251,12 @@ def sign():
     if user == cert["person"] and code == cert["digit"]:
       success = signPdf(pdf_path=filename, p12=cert["p12"], digit=code)
       if success:
-        with open ("res.pdf", "rb") as file:
-          data = file.read()
-        print(data)
+        with open("res.pdf", "rb") as file:
+          data = base64.b64encode(file.read()).decode('utf-8')
         clean()
         return jsonify({"success": True, "pdfdata": data})
-  clean()
-  return jsonify({"success": False})
+    clean()
+    return jsonify({"success": False, "error": "Code invalide !"})
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')

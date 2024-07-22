@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 from cryptography.x509.oid import NameOID
-import datetime, random
+import datetime, random, base64
 
 def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
   private_key = rsa.generate_private_key(
@@ -55,13 +55,18 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
     f"{COMMON_NAME}".encode(), private_key, certificate, None, encryption
   )
 
-  return p12, certificate.public_bytes(
-    serialization.Encoding.PEM
-    ), private_key.private_bytes(
-      encoding=serialization.Encoding.PEM,
-      format=serialization.PrivateFormat.TraditionalOpenSSL,
-      encryption_algorithm=serialization.NoEncryption()
-    ), public_key.public_bytes(
-      encoding=serialization.Encoding.PEM,
-      format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    ), digit
+  return p12, base64.b64encode(
+    certificate.public_bytes(
+      serialization.Encoding.PEM)
+    ).decode('utf-8') , base64.b64encode(
+      private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption()
+      )
+    ).decode('utf-8'), base64.b64encode(
+      public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+      )
+    ).decode('utf-8'), digit
