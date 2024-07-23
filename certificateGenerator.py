@@ -1,5 +1,5 @@
 from cryptography.x509 import (
-  Name, NameAttribute, CertificateBuilder, random_serial_number
+  Name, NameAttribute, CertificateBuilder, KeyUsage, random_serial_number
 )
 from cryptography.hazmat.primitives.serialization import pkcs12, PrivateFormat
 from cryptography.hazmat.primitives import hashes, serialization
@@ -16,7 +16,7 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
   )
   public_key = private_key.public_key()
 
-  digit = random.randint(0000, 9999)
+  digit = random.randint(000000, 999999)
   
   subject = Name([
     NameAttribute(NameOID.EMAIL_ADDRESS, EMAIL_ADDRESS),
@@ -41,6 +41,20 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
     .serial_number(random_serial_number())
     .not_valid_before(datetime.datetime.now(datetime.UTC))
     .not_valid_after(datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=365*3))
+    .add_extension(
+      KeyUsage(
+        digital_signature=True,
+        content_commitment=True,
+        key_encipherment=False,
+        data_encipherment=False,
+        key_agreement=False,
+        key_cert_sign=False,
+        crl_sign=False,
+        encipher_only=False,
+        decipher_only=False
+      ),
+      critical=True
+    )
     .sign(private_key, hashes.SHA256(), default_backend())
   )
 

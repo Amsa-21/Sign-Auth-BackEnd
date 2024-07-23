@@ -29,16 +29,13 @@ def signPdf(pdf_path, p12, digit):
   success = cert.LoadPfxFile(pkcs_path, digit)
 
   if (success == False):
-    print(cert.LastErrorText)
     return False
 
   success = pdf.SetSigningCert(cert)
   if (success == False):
-    print(pdf.LastErrorText)
     return False
 
   success = pdf.SignPdf(json, "res.pdf")
   if (success == False):
-    print(pdf.LastErrorText)
     return False
   return True
