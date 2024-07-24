@@ -33,6 +33,11 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
     NameAttribute(NameOID.COMMON_NAME, "AmsTech SN"),
   ])
 
+  """ image_extension = UnrecognizedExtension(
+    oid=ObjectIdentifier("1.2.3.4.5.6.7.8.1"),
+    value=image_data
+  ) """
+  
   certificate = (
     CertificateBuilder()
     .subject_name(subject)
@@ -55,6 +60,7 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
       ),
       critical=True
     )
+    # .add_extension(image_extension, critical=False)
     .sign(private_key, hashes.SHA256(), default_backend())
   )
 

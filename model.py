@@ -61,12 +61,15 @@ def get_trained_model(data):
     Y_ENCODDED = encoder.transform(Y)
     model.fit(EMBEDDED_X, Y_ENCODDED)
     return model, encoder
-  except:
+  except Exception as e:
+    print(e)
     return None, None
+
 def predict_face(face, model, encoder):
   if not face.all() == None:
     face_embed = get_embedding(face)
     test_im = [face_embed]
     ypreds = model.predict(test_im)
-    return encoder.inverse_transform(ypreds)[0]
+    prob = model.predict_proba(test_im)[0][0]
+    return encoder.inverse_transform(ypreds)[0], prob
   return "No face detected !"

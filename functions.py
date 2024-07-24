@@ -233,8 +233,12 @@ def prediction(face, model, encoder, refresh: bool):
   faceD = faceDetector(face)
   if faceD is not None:
     img = image_to_base64(cv2.cvtColor(faceD, cv2.COLOR_BGR2RGB))
-    res = predict_face(faceD, model, encoder)
-    return img, res
+    res, prob = predict_face(faceD, model, encoder)
+    print(res, prob)
+    if prob > .93:
+      return img, res
+    else:
+      return img, "Unrecognized face !"
   return None, "No face detected !"
 
 def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):

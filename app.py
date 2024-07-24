@@ -152,15 +152,17 @@ def addMemberFromAnalysis():
 
 @app.route('/login', methods=['POST'])
 def login():
-  users = get_data_from_table("users")
-  username = request.json.get('email')
-  password = request.json.get('password')
-  for user in (users):
-    if user["email"].lower() == username.lower() and user["password"] == password:
-      token = generate_token()
-      return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "telephone": user["telephone"], "role": user["role"]})
-  return jsonify({"success": False, "error": "Invalid credentials"})
-
+  try:
+    users = get_data_from_table("users")
+    username = request.json.get('email')
+    password = request.json.get('password')
+    for user in (users):
+      if user["email"].lower() == username.lower() and user["password"] == password:
+        token = generate_token()
+        return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "telephone": user["telephone"], "role": user["role"]})
+    return jsonify({"success": False, "error": "Invalid credentials"})
+  except Exception as e:
+    return jsonify({"success": False, "error": "No database connexion"})
 @app.route('/allUsers', methods=['GET'])
 def allUsers():
   data = get_data_from_table("users")
@@ -236,7 +238,6 @@ def predict():
     if face:
       face = "data:image/jpg;base64," + face
       return jsonify({"success": True, "person": person, "face": face})
-    return jsonify({"success": True, "person": "No face detected", "face": None})
   return jsonify({"success": True, "person": "No model trained", "face": None})
 
 @app.route('/signPDF', methods=['POST'])
