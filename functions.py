@@ -21,8 +21,11 @@ def get_db_connection():
     password="root",
     port=5432
   )"""
-  conn = psycopg2.connect('postgres://avnadmin:AVNS_jJdwHlhkwoHcODhE83V@pg-367c7a2d-amsata2009-bad2.f.aivencloud.com:18480/defaultdb?sslmode=require')
-  return conn
+  try:
+    conn = psycopg2.connect('postgres://avnadmin:AVNS_jJdwHlhkwoHcODhE83V@pg-367c7a2d-amsata2009-bad2.f.aivencloud.com:18480/defaultdb?sslmode=require')
+    return conn
+  except Exception as e:
+    print(e)
 
 def normalize(text):
   return re.sub(r'\W+', ' ', text).lower().strip()
@@ -63,7 +66,6 @@ def get_data_from_table(table):
   rows = cursor.fetchall()
   cursor.close()
   conn.close()
-  
   data = []
   if table == "ownTrustList":
     for row in rows:
@@ -251,7 +253,6 @@ def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"Certificate created for {COMMON_NAME}")
     sendEmail(to_address=EMAIL_ADDRESS, digit=digit)
   except Exception as e:
     print(e)

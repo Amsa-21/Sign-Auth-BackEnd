@@ -2,11 +2,11 @@ from signServer import *
 
 def extractCert(pdf_file):
   if pdf_file.endswith(".pdf")==False:
-    return {}
+    return None
   pdf = chilkat2.Pdf()
   success = pdf.LoadFile(pdf_file)
   if success == False:
-    return {}
+    return None
   sigInfo = chilkat2.JsonObject()
   numSignatures = pdf.NumSignatures
   cert = chilkat2.Cert()
@@ -23,9 +23,9 @@ def extractCert(pdf_file):
 def listCertAttribut(certif):
   result = {}
   for attr_name in dir(certif):
-    if not attr_name.startswith('_') and not callable(getattr(certif, attr_name)) and not attr_name.startswith('LastError') and attr_name != 'Version' and attr_name != 'SubjectAlternativeName':
+    if not attr_name.startswith('_') and not callable(getattr(certif, attr_name)) and not attr_name.startswith('LastError') and not attr_name == 'Version':
       attr_value = getattr(certif, attr_name)
-      if attr_value is not None and attr_value != "" and not isinstance(attr_value, bool):
+      if attr_value is not None and not attr_value == "" and not isinstance(attr_value, bool):
         c = {attr_name: attr_value}
         result.update(c)
   return result   
@@ -55,9 +55,7 @@ def reformat(data):
   return result
 
 def test(string, data, result):
-  if not string in data:
-    pass
-  else:
+  if string in data:
     result.update({string: data[string]})
 
 def reformatIssuer(data):

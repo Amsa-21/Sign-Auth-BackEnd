@@ -1,5 +1,5 @@
 from cryptography.x509 import (
-  Name, NameAttribute, CertificateBuilder, KeyUsage, random_serial_number
+  Name, NameAttribute, CertificateBuilder, KeyUsage, SubjectAlternativeName, RFC822Name, random_serial_number
 )
 from cryptography.hazmat.primitives.serialization import pkcs12, PrivateFormat
 from cryptography.hazmat.primitives import hashes, serialization
@@ -32,12 +32,7 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
     NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Confiance Numérique"),
     NameAttribute(NameOID.COMMON_NAME, "AmsTech SN"),
   ])
-
-  """ image_extension = UnrecognizedExtension(
-    oid=ObjectIdentifier("1.2.3.4.5.6.7.8.1"),
-    value=image_data
-  ) """
-  
+    
   certificate = (
     CertificateBuilder()
     .subject_name(subject)
@@ -60,7 +55,11 @@ def generate_certificate(EMAIL_ADDRESS, ORGANIZATION_NAME, COMMON_NAME):
       ),
       critical=True
     )
-    # .add_extension(image_extension, critical=False)
+    .add_extension(
+      SubjectAlternativeName([
+        RFC822Name(EMAIL_ADDRESS),
+      ]), critical=False
+    )
     .sign(private_key, hashes.SHA256(), default_backend())
   )
 

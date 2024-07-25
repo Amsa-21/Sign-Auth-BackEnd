@@ -10,7 +10,7 @@ app.json.sort_keys = False
 
 clean()
 
-model, encoder = refresh_model()
+# model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
