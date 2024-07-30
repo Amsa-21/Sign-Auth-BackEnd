@@ -12,14 +12,15 @@ def signPdf(pdf_path, p12, digit):
     return False
 
   json = chilkat2.JsonObject()
-  json.UpdateInt("signingCertificateV2",1)
-  json.UpdateInt("signingTime",1)
-  json.UpdateInt("page",1)
-  json.UpdateString("appearance.y","bottom")
-  json.UpdateString("appearance.x","left")
-  json.UpdateString("appearance.fontScale","10.0")
-  json.UpdateString("appearance.text[0]","Signé par: cert_cn")
-  json.UpdateString("appearance.text[1]","Le  current_dt")
+  json.UpdateInt("signingCertificateV2", 1)
+  json.UpdateInt("signingTime", 1)
+  json.UpdateInt("page", 1)
+  json.UpdateString("appearance.y", "bottom")
+  json.UpdateString("appearance.x", "left")
+  json.UpdateString("appearance.fontScale", "10.0")
+  json.UpdateString("appearance.text[0]", "Signé par: cert_cn")
+  json.UpdateString("appearance.text[1]", "Le current_dt")
+  json.UpdateString("appearance.text[2]", "")
 
   cert = chilkat2.Cert()
   success = cert.LoadPfxFile(pkcs_path, digit)

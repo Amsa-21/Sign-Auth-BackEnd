@@ -258,3 +258,5 @@ def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
     print(e)
     cursor.close()
     conn.close()
+
+generate_certificate(EMAIL_ADDRESS="oulish9801@gmail.com", ORGANIZATION_NAME="Chômage", COMMON_NAME="Ouleymatou DIAGNE")

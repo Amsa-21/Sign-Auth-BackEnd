@@ -10,7 +10,7 @@ app.json.sort_keys = False
 
 clean()
 
-# model, encoder = refresh_model()
+model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
@@ -234,7 +234,7 @@ def deleteUser():
 def predict():
   face_img = request.form['image']
   if model is not None:
-    face, person = prediction(face_img, model, encoder, refresh=False)
+    face, person = prediction(face_img, model, encoder, refresh=True)
     if face:
       face = "data:image/jpg;base64," + face
       return jsonify({"success": True, "person": person, "face": face})
