@@ -2,12 +2,14 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from functions import *
-import json
+from array import array
+import json, uuid
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
 
+BASE_FOLDER = "D:/SNT/.database/"
 clean()
 
 model, encoder = refresh_model()
@@ -163,6 +165,7 @@ def login():
     return jsonify({"success": False, "error": "Invalid credentials"})
   except Exception as e:
     return jsonify({"success": False, "error": "No database connexion"})
+
 @app.route('/allUsers', methods=['GET'])
 def allUsers():
   data = get_data_from_table("users")
@@ -234,30 +237,128 @@ def deleteUser():
 def predict():
   face_img = request.form['image']
   if model is not None:
-    face, person = prediction(face_img, model, encoder, refresh=True)
+    face, person = prediction(face_img, model, encoder, refresh=False)
     if face:
       face = "data:image/jpg;base64," + face
       return jsonify({"success": True, "person": person, "face": face})
   return jsonify({"success": True, "person": "No model trained", "face": None})
 
 @app.route('/signPDF', methods=['POST'])
-def sign():
-  file = request.files['fichier']
-  filename = secure_filename(file.filename)
-  file.save(filename)
+async def sign():
+  id = request.form['id']
   user = request.form['user']
   code = request.form['code']
-  certs = get_data_from_table("certificates")
-  for cert in  certs:
-    if user == cert["person"] and code == cert["digit"]:
-      success = signPdf(pdf_path=filename, p12=cert["p12"], digit=code)
-      if success:
-        with open("res.pdf", "rb") as file:
-          data = base64.b64encode(file.read()).decode('utf-8')
+  img = request.form['image']
+    
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    for row in rows:
+      if row:
+        filename = rf"{BASE_FOLDER}{row[1]}"
+        cursign = row[9]
+        numsigners = row[8]
+    certs = get_data_from_table("certificates")
+    for cert in  certs:
+      if user == cert["person"] and code == cert["digit"]:
+        ident, success = await signPdf(pdf_path=filename, certificate=cert["certificate"], private_key=cert["private_key"])
+        if success:
+          savePicture(ident, img)
+          with open(filename, "rb") as file:
+            data = base64.b64encode(file.read()).decode('utf-8')
+          clean()
+          conn = get_db_connection()
+          cursor = conn.cursor()
+          cursor.execute('UPDATE public."signRequest" set cursign = %s, status =  WHERE id = %s', (cursign+1, (cursign+1)//numsigners, id))
+          conn.commit()
+          cursor.close()
+          conn.close()
+          return jsonify({"success": True, "pdfdata": data})
         clean()
-        return jsonify({"success": True, "pdfdata": data})
-  clean()
-  return jsonify({"success": False, "error": "Code invalide !"})
+        return jsonify({"success": False, "error": "Signature déjà présente !"})
+    clean()
+    return jsonify({"success": False, "error": "Code invalide !"})
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    clean()
+    return jsonify({"success": False, "error": str(e)})
+
+@app.route('/addRequest', methods=['POST'])
+def addRequest():
+  file = request.files['fichier']
+  user = request.form['demandeur']
+  t=user.split(' ')
+  filename = f"Demande-{t[0]}_{t[1]}_{uuid.uuid4()}.pdf"
+  file.save(f"{BASE_FOLDER}{filename}")
+  signers = request.form['signataires']
+  obj = request.form['objet']
+  comment = request.form['commentaire']
+  date = datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y')
+  signer = [user.strip() for user in signers.split(',')]
+  insert_query = 'INSERT INTO public."signRequest" (filename, person, signers, object, comment, date, status, nbresign, cursign) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)'
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(insert_query, (filename, user, signer, obj, comment, date, 0, len(signer), 0))
+    conn.commit()
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  cursor.close()
+  conn.close()
+  return jsonify({"success": True})
+
+@app.route('/allRequest', methods=['GET'])
+def allRequest():
+  data = get_data_from_table("signRequest")
+  return jsonify({"success": True, "result": data})
+
+@app.route('/deleteRequest', methods=['DELETE'])
+def deleteRequest():
+  id = request.args.get('id')
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
+    rows = cursor.fetchall()
+    cursor.execute('DELETE FROM public."signRequest" WHERE id = %s', (id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    for row in rows:
+      if row:
+        filename = row[1]
+        os.remove(rf"{BASE_FOLDER}{filename}")
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  data = get_data_from_table("signRequest")
+  return jsonify({"success": True, "result": data})
+
+@app.route('/refuseRequest', methods=['POST'])
+def refuseRequest():
+  id = request.args.get('id')
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  try:
+    req = 'Update public."signRequest" set status = 2 WHERE id = %s'
+    cursor.execute(req, (id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  data = get_data_from_table("signRequest")
+  return jsonify({"success": True, "result": data})
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')

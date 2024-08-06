@@ -10,7 +10,7 @@ detector = MTCNN()
 
 def clean():
   for fichier in os.listdir(os.curdir):
-    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg") or fichier.endswith(".p12"):
+    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg") or fichier.endswith(".p12") or fichier.endswith(".pem"):
       os.remove(fichier)
 
 def get_db_connection():
@@ -61,7 +61,28 @@ def generate_token():
 def get_data_from_table(table):
   conn = get_db_connection()
   cursor = conn.cursor()
-  query = 'SELECT * FROM {};'.format(table)
+  query = 'SELECT * FROM {}'.format(table)
+  if table == "signRequest":
+    cursor.execute('SELECT * FROM public."signRequest"')
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    data = []
+    for row in rows:
+      data.append({
+        "id": row[0],
+        "filename": row[1],
+        "person": row[2],
+        "signers": row[3],
+        "object": row[4],
+        "comment": row[5],
+        "date": row[6],
+        "status": row[7],
+        "nbresign": row[8],
+        "cursign": row[9],
+      })
+    data.reverse()
+    return data
   cursor.execute(query)
   rows = cursor.fetchall()
   cursor.close()
@@ -215,9 +236,12 @@ def frames2db(user, res, cursor):
     cursor.execute(req, (user, pic))
 
 def refresh_model():
-  conn = get_db_connection()
-  data = get_trainset(conn)
-  return get_trained_model(data)
+  try:
+    conn = get_db_connection()
+    data = get_trainset(conn)
+    return get_trained_model(data)
+  except:
+    return None
 
 def base64ToImg(base64_string):
   try:
@@ -237,7 +261,7 @@ def prediction(face, model, encoder, refresh: bool):
     img = image_to_base64(cv2.cvtColor(faceD, cv2.COLOR_BGR2RGB))
     res, prob = predict_face(faceD, model, encoder)
     print(res, prob)
-    if prob > .93:
+    if prob > .5:
       return img, res
     else:
       return img, "Unrecognized face !"
@@ -259,4 +283,14 @@ def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
     cursor.close()
     conn.close()
 
-generate_certificate(EMAIL_ADDRESS="oulish9801@gmail.com", ORGANIZATION_NAME="Chômage", COMMON_NAME="Ouleymatou DIAGNE")
+def savePicture(id, img):
+  try:
+    insert_query = "INSERT INTO public.signerpic (ident, image) VALUES (%s, %s)"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(insert_query, (id, img))
+    conn.commit()
+    cursor.close()
+    conn.close()
+  except Exception as e:
+    print(e)

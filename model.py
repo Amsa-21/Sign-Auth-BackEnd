@@ -70,6 +70,7 @@ def predict_face(face, model, encoder):
     face_embed = get_embedding(face)
     test_im = [face_embed]
     ypreds = model.predict(test_im)
-    prob = model.predict_proba(test_im)[0][0]
+    res = model.predict_proba(test_im)[0]
+    prob = res[0] - res[1]
     return encoder.inverse_transform(ypreds)[0], prob
   return "No face detected !"
