@@ -273,7 +273,7 @@ async def sign():
           clean()
           conn = get_db_connection()
           cursor = conn.cursor()
-          cursor.execute('UPDATE public."signRequest" set cursign = %s, status =  WHERE id = %s', (cursign+1, (cursign+1)//numsigners, id))
+          cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s WHERE id = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), id))
           conn.commit()
           cursor.close()
           conn.close()
