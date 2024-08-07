@@ -9,7 +9,7 @@ def extractCert(pdf_file):
     cert_der = s.signer_cert.dump()
     cert_cryptography = x509.load_der_x509_certificate(cert_der, default_backend())
     res = listCertAttribut(cert_cryptography)
-    cert_data[f"Signature of {res['commonNameSubject']} <{res['emailAddressSubject']}> "] = reformat(res)
+    cert_data[f"Signature of {res['commonNameSubject']} [{res['emailAddressSubject']}] "] = reformat(res)
   return cert_data
 
 def listCertAttribut(cert):

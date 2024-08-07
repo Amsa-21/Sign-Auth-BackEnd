@@ -32,10 +32,10 @@ def normalize(text):
 
 def correlation(json, tab):
   for company in tab:
-    issuer_o_normalized = normalize(json["IssuerO"])
+    issuer_o_normalized = normalize(json["organizationNameIssuer"])
     company_name_normalized = normalize(company["nomEntreprise"])
     name_match = issuer_o_normalized == company_name_normalized
-    country_match = json["IssuerC"].lower() == company["codePaysRegion"].lower()
+    country_match = json["countryNameIssuer"].lower() == company["codePaysRegion"].lower()
     if name_match and country_match:
       return company
   return None
@@ -81,8 +81,10 @@ def get_data_from_table(table):
         "nbresign": row[8],
         "cursign": row[9],
       })
-    data.reverse()
-    return data
+    def parse_date(date_str):
+      return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
+    sorted_data = sorted(data, key=lambda x: parse_date(x['date']), reverse=True)
+    return sorted_data
   cursor.execute(query)
   rows = cursor.fetchall()
   cursor.close()
@@ -139,7 +141,7 @@ def find_signature(path):
   res = autorityFinder(path)
   search = None
   for cert in data:
-    if res["IssuerO"] == cert["nomEntreprise"]:
+    if res["organizationNameIssuer"] == cert["nomEntreprise"]:
       search = cert["textFind"]
       break
   if search != None:

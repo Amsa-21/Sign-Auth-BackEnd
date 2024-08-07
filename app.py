@@ -2,7 +2,6 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from functions import *
-from array import array
 import json, uuid
 
 app = Flask(__name__)
@@ -12,7 +11,7 @@ app.json.sort_keys = False
 BASE_FOLDER = "D:/SNT/.database/"
 clean()
 
-model, encoder = refresh_model()
+# model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
@@ -137,12 +136,12 @@ def getPDFInfo():
 def addMemberFromAnalysis():
   member = request.form['member']
   member_json = json.loads(member)
-  name = getNameFromCode(member_json['IssuerC'])
+  name = getNameFromCode(member_json['countryNameIssuer'])
   insert_query = 'INSERT INTO ownTrustList (codeCountryRegion, hLocation, cName) VALUES (%s, %s, %s)'
   try:
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(insert_query, (member_json['IssuerC'], name, member_json['IssuerO']))
+    cursor.execute(insert_query, (member_json['countryNameIssuer'], name, member_json['organizationNameIssuer']))
     conn.commit()
   except Exception as e:
     cursor.close()
@@ -359,6 +358,30 @@ def refuseRequest():
     return jsonify({"success": False, "error": str(e)})
   data = get_data_from_table("signRequest")
   return jsonify({"success": True, "result": data})
+
+@app.route('/getPDF', methods=['POST'])
+def getPDF():
+  id = request.args.get('id')
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    filename = rf"{BASE_FOLDER}{rows[0][1]}"
+    with open(filename, "rb") as file:
+      data = base64.b64encode(file.read()).decode('utf-8')
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  return jsonify({"success": True, "result": data})
+
+""" 
+TODO
+Mailing
+Contrôle sur les signataires Vérification des signatures """
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')
