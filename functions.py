@@ -1,5 +1,6 @@
 import re, psycopg2, secrets
 from mtcnn.mtcnn import MTCNN
+from pyzbar.pyzbar import decode
 from certificateGenerator import *
 from signFinder import *
 from mailServer import *
@@ -80,6 +81,7 @@ def get_data_from_table(table):
         "status": row[7],
         "nbresign": row[8],
         "cursign": row[9],
+        "signatures": row[10],
       })
     def parse_date(date_str):
       return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
@@ -146,10 +148,8 @@ def find_signature(path):
       break
   if search != None:
     tab = lireSignature(path)
-    for img in tab:
-      char = lireCaractere(img)
-      if search.lower() in char.lower():
-        signs[char] = image_to_base64(img)
+    for i, img in enumerate(tab):
+      signs[i] = {"specimen": image_to_base64(img), "face": imgFromDB(lireCaractere(img))}
   return signs
 
 def sign_definition_1(pix, widgets):
@@ -166,9 +166,8 @@ def sign_definition_1(pix, widgets):
     if cropped_image.size == 0:
       continue
     tab.append(cropped_image)
-  for img in tab:
-    character = lireCaractere(img)
-    signs[character] = image_to_base64(img)
+  for i, img in enumerate(tab):
+    signs[i] = {"specimen": image_to_base64(img), "face": imgFromDB(lireCaractere(img))}
   return signs
 
 def lireSignature_1(pdf_path):
@@ -266,7 +265,7 @@ def prediction(face, model, encoder, refresh: bool):
     if prob > .5:
       return img, res
     else:
-      return img, "Unrecognized face !"
+      return None, "Unrecognized face !"
   return None, "No face detected !"
 
 def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
@@ -279,7 +278,7 @@ def create_PKCS(id, EMAIL_ADDRESS, COMMON_NAME, ORGANIZATION_NAME):
     conn.commit()
     cursor.close()
     conn.close()
-    sendEmail(to_address=EMAIL_ADDRESS, digit=digit)
+    sendDigitEmail(to_address=EMAIL_ADDRESS, digit=digit)
   except Exception as e:
     print(e)
     cursor.close()
@@ -290,9 +289,30 @@ def savePicture(id, img):
     insert_query = "INSERT INTO public.signerpic (ident, image) VALUES (%s, %s)"
     conn = get_db_connection()
     cursor = conn.cursor()
+    img = img.encode('utf-8')
     cursor.execute(insert_query, (id, img))
     conn.commit()
     cursor.close()
     conn.close()
   except Exception as e:
+    cursor.close()
+    conn.close()
     print(e)
+
+def imgFromDB(id):
+  try:
+    query = "SELECT * FROM public.signerpic WHERE ident = %s"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, (id,))
+    rows = cursor.fetchall()
+    if rows:
+      data = rows[0][1]
+    cursor.close()
+    conn.close()
+    return "data:image/jpg;base64," + bytes(data).decode('utf-8')
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    print(e)
+    return None

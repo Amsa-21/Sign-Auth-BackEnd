@@ -1,5 +1,7 @@
 import easyocr, fitz, cv2, os
 from certReader import *
+from pyzbar.pyzbar import decode
+
 
 reader = easyocr.Reader(['fr'])
 
@@ -10,7 +12,7 @@ def sign_definition(pix):
   rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 30))
   dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
   contours, _ = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-  for i, cnt in enumerate(contours):
+  for _, cnt in enumerate(contours):
     x, y, w, h = cv2.boundingRect(cnt)
     contour_img = pix[y:y+h, x:x+w]
     tab.append(contour_img)
@@ -28,10 +30,8 @@ def lireSignature(pdf_path):
   return tab
 
 def lireCaractere(img):
-  cv2.imwrite("image_path.png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-  results = reader.readtext("image_path.png")
-  os.remove("image_path.png")
-  text = ''
-  for result in results:
-    text += ' ' + result[1]
-  return text
+  path = "image_path.png"
+  cv2.imwrite(path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+  image = cv2.imread(path)
+  os.remove(path)
+  return decode(image)[0].data.decode("utf-8")

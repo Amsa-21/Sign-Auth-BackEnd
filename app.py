@@ -11,7 +11,7 @@ app.json.sort_keys = False
 BASE_FOLDER = "D:/SNT/.database/"
 clean()
 
-# model, encoder = refresh_model()
+model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
@@ -26,7 +26,10 @@ def get_data_from_pdf():
   if len(certificate_data) > 0:
     isEmpty = False
     signs = find_signature(filename)
-    res = {"isEmpty": isEmpty, "result": certificate_data, "signature": signs}
+    result = {}
+    for i, (cert, sign) in enumerate(zip(certificate_data.items(), signs.items())):
+      result[i] = {"cert": cert, "sign": sign}
+    res = {"isEmpty": isEmpty, "result": result}
   else:
     isEmpty = True
     res = {"isEmpty": isEmpty, "result": {}, "signature": {}}
@@ -238,9 +241,8 @@ def predict():
   if model is not None:
     face, person = prediction(face_img, model, encoder, refresh=False)
     if face:
-      face = "data:image/jpg;base64," + face
       return jsonify({"success": True, "person": person, "face": face})
-  return jsonify({"success": True, "person": "No model trained", "face": None})
+  return jsonify({"success": False, "person": "No model trained", "face": None})
 
 @app.route('/signPDF', methods=['POST'])
 async def sign():
@@ -248,7 +250,7 @@ async def sign():
   user = request.form['user']
   code = request.form['code']
   img = request.form['image']
-    
+  
   try:
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -261,22 +263,22 @@ async def sign():
         filename = rf"{BASE_FOLDER}{row[1]}"
         cursign = row[9]
         numsigners = row[8]
+        signatures = row[10]
     certs = get_data_from_table("certificates")
     for cert in  certs:
       if user == cert["person"] and code == cert["digit"]:
         ident, success = await signPdf(pdf_path=filename, certificate=cert["certificate"], private_key=cert["private_key"])
         if success:
+          signatures.append(user)
           savePicture(ident, img)
-          with open(filename, "rb") as file:
-            data = base64.b64encode(file.read()).decode('utf-8')
-          clean()
           conn = get_db_connection()
           cursor = conn.cursor()
-          cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s WHERE id = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), id))
+          cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s, signatures = %s WHERE id = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), signatures, id))
           conn.commit()
           cursor.close()
           conn.close()
-          return jsonify({"success": True, "pdfdata": data})
+          clean()
+          return jsonify({"success": True})
         clean()
         return jsonify({"success": False, "error": "Signature déjà présente !"})
     clean()
@@ -299,12 +301,18 @@ def addRequest():
   comment = request.form['commentaire']
   date = datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y')
   signer = [user.strip() for user in signers.split(',')]
-  insert_query = 'INSERT INTO public."signRequest" (filename, person, signers, object, comment, date, status, nbresign, cursign) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)'
+  insert_query = 'INSERT INTO public."signRequest" (filename, person, signers, object, comment, date, status, nbresign, cursign, signatures) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+  signatures = []
   try:
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(insert_query, (filename, user, signer, obj, comment, date, 0, len(signer), 0))
+    cursor.execute(insert_query, (filename, user, signer, obj, comment, date, 0, len(signer), 0, signatures))
     conn.commit()
+    for s in signer:
+      chaine=s.split(' ')
+      cursor.execute('SELECT * FROM "users" WHERE telephone = %s', (chaine[2],))
+      rows = cursor.fetchall()
+      sendInvitEmail(to_address=rows[0][4], person=f"{t[0]} {t[1]}", doc=filename, date=date)
   except Exception as e:
     cursor.close()
     conn.close()
@@ -372,16 +380,16 @@ def getPDF():
     filename = rf"{BASE_FOLDER}{rows[0][1]}"
     with open(filename, "rb") as file:
       data = base64.b64encode(file.read()).decode('utf-8')
+    return jsonify({"success": True, "result": data})
   except Exception as e:
     cursor.close()
     conn.close()
     return jsonify({"success": False, "error": str(e)})
-  return jsonify({"success": True, "result": data})
 
-""" 
-TODO
-Mailing
-Contrôle sur les signataires Vérification des signatures """
+"""
+Vérification des signatures
+"""
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')
+  
