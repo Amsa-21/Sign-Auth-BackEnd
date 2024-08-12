@@ -32,7 +32,7 @@ def get_data_from_pdf():
     res = {"isEmpty": isEmpty, "result": result}
   else:
     isEmpty = True
-    res = {"isEmpty": isEmpty, "result": {}, "signature": {}}
+    res = {"isEmpty": isEmpty, "result": None}
   clean()
   return jsonify(res)
 
@@ -239,7 +239,7 @@ def deleteUser():
 def predict():
   face_img = request.form['image']
   if model is not None:
-    face, person = prediction(face_img, model, encoder, refresh=False)
+    face, person = prediction(face_img, model, encoder, refresh=True)
     if face:
       return jsonify({"success": True, "person": person, "face": face})
   return jsonify({"success": False, "person": "No model trained", "face": None})
@@ -392,4 +392,3 @@ Vérification des signatures
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')
-  

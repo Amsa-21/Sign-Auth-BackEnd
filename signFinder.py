@@ -34,4 +34,7 @@ def lireCaractere(img):
   cv2.imwrite(path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
   image = cv2.imread(path)
   os.remove(path)
-  return decode(image)[0].data.decode("utf-8")
+  try:
+    return decode(image)[0].data.decode("utf-8")
+  except:
+    return None
