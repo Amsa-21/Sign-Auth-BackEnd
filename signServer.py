@@ -8,14 +8,37 @@ from cryptography import x509
 
 async def sign(signer, fname, num, i):
   ident = secrets.token_hex(16)
-  padding = 5+(i-1)*5
+  if i > 12:
+    return None, None
   with open(fname, 'rb') as inf:
     w = IncrementalPdfFileWriter(inf)
-    fields.append_signature_field(
-      w, sig_field_spec=fields.SigFieldSpec(
-        f'Signature{num}', box=(padding+150*(i-1), 5, padding+150*i, 35)
+    if i > 12:
+      i-=12
+      fields.append_signature_field(
+        w, sig_field_spec=fields.SigFieldSpec(
+          f'Signature{num}', box=((i*5)+145*(i-1), 110, (i*5)+145*i, 140)
+        )
       )
-    )
+    elif i > 8:
+      i-=8
+      fields.append_signature_field(
+        w, sig_field_spec=fields.SigFieldSpec(
+          f'Signature{num}', box=((i*5)+145*(i-1), 75, (i*5)+145*i, 105)
+        )
+      )
+    elif i > 4:
+      i-=4
+      fields.append_signature_field(
+        w, sig_field_spec=fields.SigFieldSpec(
+          f'Signature{num}', box=((i*5)+145*(i-1), 40, (i*5)+145*i, 70)
+        )
+      )
+    else:
+      fields.append_signature_field(
+        w, sig_field_spec=fields.SigFieldSpec(
+          f'Signature{num}', box=((i*5)+145*(i-1), 5, (i*5)+145*i, 35)
+        )
+      )
     tt_client = timestamps.HTTPTimeStamper('http://timestamp.sectigo.com')
     meta = signers.PdfSignatureMetadata(field_name=f'Signature{num}')
     pdf_signer = signers.PdfSigner(
@@ -31,6 +54,20 @@ async def sign(signer, fname, num, i):
       appearance_text_params={'url': ident}
     )
   return out, ident
+
+def test_if_present(pdf_path):
+  with open('cert.pem', "rb") as file:  
+    cert_der = file.read()
+    cert_cryptography_test = x509.load_pem_x509_certificate(cert_der, default_backend())
+  with open(pdf_path, 'rb') as doc:
+    r = PdfFileReader(doc)
+    sig = r.embedded_regular_signatures
+  for s in sig:
+    cert_der = s.signer_cert.dump()
+    cert_cryptography = x509.load_der_x509_certificate(cert_der, default_backend())
+    if cert_cryptography.subject == cert_cryptography_test.subject:
+      return True
+  return False
 
 async def signPdf(pdf_path, certificate, private_key):
   key_path = "key.pem"
@@ -48,20 +85,9 @@ async def signPdf(pdf_path, certificate, private_key):
     num = len(r.embedded_signatures)
     i = len(r.embedded_regular_signatures)
   out, ident = await sign(cms_signer, pdf_path, num+1, i+1)
-  with open(pdf_path, "wb") as file:
-    file.write(out.getvalue())
-  return ident, True
-
-def test_if_present(pdf_path):
-  with open('cert.pem', "rb") as file:  
-    cert_der = file.read()
-    cert_cryptography_test = x509.load_pem_x509_certificate(cert_der, default_backend())
-  with open(pdf_path, 'rb') as doc:
-    r = PdfFileReader(doc)
-    sig = r.embedded_regular_signatures
-  for s in sig:
-    cert_der = s.signer_cert.dump()
-    cert_cryptography = x509.load_der_x509_certificate(cert_der, default_backend())
-    if cert_cryptography.subject == cert_cryptography_test.subject:
-      return True
-  return False
+  if out is not None:
+    with open(pdf_path, "wb") as file:
+      file.write(out.getvalue())
+    return ident, True
+  else:
+    return None, False

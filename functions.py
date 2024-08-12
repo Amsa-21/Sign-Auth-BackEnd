@@ -1,6 +1,5 @@
 import re, psycopg2, secrets
 from mtcnn.mtcnn import MTCNN
-from pyzbar.pyzbar import decode
 from certificateGenerator import *
 from signFinder import *
 from mailServer import *
@@ -62,7 +61,6 @@ def generate_token():
 def get_data_from_table(table):
   conn = get_db_connection()
   cursor = conn.cursor()
-  query = 'SELECT * FROM {}'.format(table)
   if table == "signRequest":
     cursor.execute('SELECT * FROM public."signRequest"')
     rows = cursor.fetchall()
@@ -87,6 +85,7 @@ def get_data_from_table(table):
       return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
     sorted_data = sorted(data, key=lambda x: parse_date(x['date']), reverse=True)
     return sorted_data
+  query = 'SELECT * FROM {}'.format(table)
   cursor.execute(query)
   rows = cursor.fetchall()
   cursor.close()

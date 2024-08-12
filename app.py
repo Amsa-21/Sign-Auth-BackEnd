@@ -386,8 +386,33 @@ def getPDF():
     conn.close()
     return jsonify({"success": False, "error": str(e)})
 
+@app.route('/changePassword', methods=['POST'])
+def changePassword():
+  member = request.form['datas']
+  member_json = json.loads(member)
+  telephone = request.form['tel']
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE telephone = %s AND password = %s', (telephone, member_json["prepassword"]))
+    rows = cursor.fetchall()
+    for row in rows:
+      if row:
+        id = row[0]
+        cursor.execute('UPDATE users SET password = %s WHERE id = %s', (member_json["password"], id))
+        conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"success": True})
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+
+
 """
 Vérification des signatures
+Amélioration du design
 """
 
 if __name__ == '__main__':
