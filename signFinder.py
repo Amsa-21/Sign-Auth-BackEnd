@@ -1,9 +1,6 @@
-import easyocr, fitz, cv2, os
+import fitz, cv2, os
 from certReader import *
 from pyzbar.pyzbar import decode
-
-
-reader = easyocr.Reader(['fr'])
 
 def sign_definition(pix):
   tab = []

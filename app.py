@@ -412,7 +412,7 @@ def changePassword():
 
 """
 Vérification des signatures
-Amélioration du design
+Amélioration du design du site
 """
 
 if __name__ == '__main__':
