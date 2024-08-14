@@ -51,8 +51,8 @@ def sendInvitEmail(to_address, person, doc, date):
       <body>
         <p>Vous avez une nouvelle demande de signature.</p>
         <br/>
-        <p><b>{person}</b> vous invite à signer son document <b>{doc}</b>.</p>
-        <p>La demande est effective depuis {date}.</p>
+        <p><b>{person}</b> vous invite à signer un document.</p>
+        <p>La demande est effective depuis le {date.split(" ")[1]} à {date.split(" ")[0]}.</p>
       </body>
     </html>
   """
