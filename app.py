@@ -250,7 +250,6 @@ async def sign():
   user = request.form['user']
   code = request.form['code']
   img = request.form['image']
-  
   try:
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -261,6 +260,7 @@ async def sign():
     for row in rows:
       if row:
         filename = rf"{BASE_FOLDER}{row[1]}"
+        person = row[2]
         cursign = row[9]
         numsigners = row[8]
         signatures = row[10]
@@ -275,6 +275,13 @@ async def sign():
           cursor = conn.cursor()
           cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s, signatures = %s WHERE id = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), signatures, id))
           conn.commit()
+          if((int(cursign)+1)//int(numsigners) == 1):
+            person = person.split(" ")
+            cursor.execute('SELECT * FROM users WHERE telephone = %s', (person[2],))
+            rows = cursor.fetchall()
+            for row in rows:
+              if row:
+                sendSuccessEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
           cursor.close()
           conn.close()
           clean()
@@ -312,7 +319,7 @@ def addRequest():
       chaine=s.split(' ')
       cursor.execute('SELECT * FROM "users" WHERE telephone = %s', (chaine[2],))
       rows = cursor.fetchall()
-      sendInvitEmail(to_address=rows[0][4], person=f"{t[0]} {t[1]}", doc=filename, date=date)
+      sendInvitEmail(to_address=rows[0][4], person=f"{t[0]} {t[1]}", date=date)
   except Exception as e:
     cursor.close()
     conn.close()
@@ -358,6 +365,17 @@ def refuseRequest():
     req = 'Update public."signRequest" set status = 2 WHERE id = %s'
     cursor.execute(req, (id,))
     conn.commit()
+    cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
+    rows = cursor.fetchall()
+    for row in rows:
+      if row:
+        person = row[2]
+        person = person.split(" ")
+        cursor.execute('SELECT * FROM users WHERE telephone = %s', (person[2],))
+        rows1 = cursor.fetchall()
+        for row1 in rows1:
+          if row1:
+            sendRefuseEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
     cursor.close()
     conn.close()
   except Exception as e:
@@ -412,7 +430,6 @@ def changePassword():
 
 """
 Vérification des signatures
-Amélioration du design du site
 """
 
 if __name__ == '__main__':
