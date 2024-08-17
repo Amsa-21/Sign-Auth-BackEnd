@@ -18,7 +18,10 @@ model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
-  return "<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'><h1>Flask API Running...</h1></div>"
+  return """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
+              <h1>Flask API Running...</h1>
+            </div>
+          """
 
 @app.route('/metadatafrompdf', methods=['POST'])
 def get_data_from_pdf():
@@ -436,4 +439,4 @@ Vérification des signatures
 """
 
 if __name__ == '__main__':
-  app.run(debug=False, host='0.0.0.0', port='8080')
+  app.run(ssl_context=('ssl/cert.pem', 'ssl/key.pem'), host='0.0.0.0', port='8080')
