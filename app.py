@@ -8,7 +8,10 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
 
-BASE_FOLDER = "D:/SNT/.database/"
+BASE_FOLDER = ".database/"
+if not os.path.exists(BASE_FOLDER.split('/')[0]):
+  os.makedirs(BASE_FOLDER)
+
 clean()
 
 model, encoder = refresh_model()
