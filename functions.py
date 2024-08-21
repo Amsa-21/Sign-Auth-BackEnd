@@ -81,8 +81,32 @@ def get_data_from_table(table):
         "cursign": row[9],
         "signatures": row[10],
       })
-    def parse_date(date_str):
-      return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
+      def parse_date(date_str):
+        return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
+    sorted_data = sorted(data, key=lambda x: parse_date(x['date']), reverse=True)
+    return sorted_data
+  elif table == "extSignRequest":
+    cursor.execute('SELECT * FROM public."extSignRequest"')
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    data = []
+    for row in rows:
+      data.append({
+        "id": row[0],
+        "filename": row[1],
+        "person": row[2],
+        "signers": row[3],
+        "object": row[4],
+        "comment": row[5],
+        "date": row[6],
+        "status": row[7],
+        "nbresign": row[8],
+        "cursign": row[9],
+        "signatures": row[10],
+      })
+      def parse_date(date_str):
+        return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
     sorted_data = sorted(data, key=lambda x: parse_date(x['date']), reverse=True)
     return sorted_data
   query = 'SELECT * FROM {}'.format(table)
@@ -126,6 +150,25 @@ def get_data_from_table(table):
         "public_key": row[5],
         "digit": row[6]
       })
+  elif table == "extSignRequest":
+    for row in rows:
+      data.append({
+        "id": row[0],
+        "filename": row[1],
+        "person": row[2],
+        "signers": row[3],
+        "object": row[4],
+        "comment": row[5],
+        "date": row[6],
+        "status": row[7],
+        "nbresign": row[8],
+        "cursign": row[9],
+        "signatures": row[10],
+      })
+    def parse_date(date_str):
+      return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
+    sorted_data = sorted(data, key=lambda x: parse_date(x['date']), reverse=True)
+    return sorted_data
   return data
 
 def image_to_base64(image_np):

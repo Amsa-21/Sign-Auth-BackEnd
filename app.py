@@ -7,14 +7,14 @@ import json, uuid
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
-
+FRONT_URL = "http://localhost:3000/extsign"
 BASE_FOLDER = ".database/"
 if not os.path.exists(BASE_FOLDER.split('/')[0]):
   os.makedirs(BASE_FOLDER)
 
 clean()
 
-model, encoder = refresh_model()
+# model, encoder = refresh_model()
 
 @app.route('/')
 def hello():
@@ -283,7 +283,7 @@ async def sign():
           conn.commit()
           if((int(cursign)+1)//int(numsigners) == 1):
             person = person.split(" ")
-            cursor.execute('SELECT * FROM users WHERE telephone = %s', (person[2],))
+            cursor.execute('SELECT * FROM users WHERE telephone = %s', (person[-1],))
             rows = cursor.fetchall()
             for row in rows:
               if row:
@@ -302,12 +302,66 @@ async def sign():
     clean()
     return jsonify({"success": False, "error": str(e)})
 
+@app.route('/externalSignPDF', methods=['POST'])
+async def externalSign():
+  name = request.form['user']
+  file = request.form['filename']
+  face = request.form['image']
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM public."extSignRequest" WHERE filename = %s', (file,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    for row in rows:
+      if row:
+        person = row[2]
+        cursign = row[9]
+        numsigners = row[8]
+    certs = get_data_from_table("certificates")
+    for cert in certs:
+      if cert["person"] == "Externe":
+        user = f"{" ".join(name.split("_")[:-1])} <{name.split("_")[-1]}>"
+        filename = rf"{BASE_FOLDER}{file}"
+        face = base64ToImg(face)
+        faceD = faceDetector(face)
+        if faceD is not None:
+          ident, success = await externalSignPdf(name= user, pdf_path=filename, certificate=cert["certificate"], private_key=cert["private_key"])
+          if success:
+            img = image_to_base64(cv2.cvtColor(faceD, cv2.COLOR_BGR2RGB))
+            savePicture(ident, img)
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('UPDATE public."extSignRequest" set cursign = %s, status = %s WHERE filename = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), file))
+            conn.commit()
+            if((int(cursign)+1)//int(numsigners) == 1):
+              cursor.execute('SELECT * FROM users WHERE telephone = %s', (person.split(" ")[-1],))
+              rows = cursor.fetchall()
+              for row in rows:
+                if row:
+                  sendSuccessEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
+            cursor.close()
+            conn.close()
+            clean()
+            return jsonify({"success": True})
+          cursor.close()
+          conn.close()
+          clean()
+          return jsonify({"success": False})
+        clean()
+        return jsonify({"success": False, "error": "Aucun visage détécté !"})
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    clean()
+    return jsonify({"success": False, "error": str(e)})
+
 @app.route('/addRequest', methods=['POST'])
 def addRequest():
   file = request.files['fichier']
   user = request.form['demandeur']
-  t=user.split(' ')
-  filename = f"Demande-{t[0]}_{t[1]}_{uuid.uuid4()}.pdf"
+  filename = f"Demande-{"_".join(user.split(" ")[:-1])}_{uuid.uuid4()}.pdf"
   file.save(f"{BASE_FOLDER}{filename}")
   signers = request.form['signataires']
   obj = request.form['objet']
@@ -323,9 +377,39 @@ def addRequest():
     conn.commit()
     for s in signer:
       chaine=s.split(' ')
-      cursor.execute('SELECT * FROM "users" WHERE telephone = %s', (chaine[2],))
+      cursor.execute('SELECT * FROM "users" WHERE telephone = %s', (chaine[-1],))
       rows = cursor.fetchall()
-      sendInvitEmail(to_address=rows[0][4], person=f"{t[0]} {t[1]}", date=date)
+      sendInvitEmail(to_address=rows[0][4], person=f"{" ".join(user.split(" ")[:-1])}", date=date)
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  cursor.close()
+  conn.close()
+  return jsonify({"success": True})
+
+@app.route('/addExternalRequest', methods=['POST'])
+def addExternalRequest():
+  file = request.files['fichier']
+  user = request.form['demandeur']
+  filename = f"Demande-EXT-{"_".join(user.split(" ")[:-1])}_{uuid.uuid4()}.pdf"
+  file.save(f"{BASE_FOLDER}{filename}")
+  signers = request.form['signataires']
+  obj = request.form['objet']
+  comment = request.form['commentaire']
+  date = datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y')
+  signer = [user for user in signers.split(", ")]
+  insert_query = 'INSERT INTO "extSignRequest" (filename, person, signers, object, comment, date, status, nbresign, cursign, signatures) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+  signatures = []
+  try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(insert_query, (filename, user, signer, obj, comment, date, 0, len(signer), 0, signatures))
+    conn.commit()
+    for s in signer:
+      name = f"{" ".join(user.split(" ")[:-1])}"
+      url = f"{FRONT_URL}/{s.replace(" ", "_")}/{filename}"
+      sendExternalInvitEmail(to_address=s.split(" ")[-1], person=name, date=date, url=url)
   except Exception as e:
     cursor.close()
     conn.close()
@@ -337,7 +421,12 @@ def addRequest():
 @app.route('/allRequest', methods=['GET'])
 def allRequest():
   data = get_data_from_table("signRequest")
-  return jsonify({"success": True, "result": data})
+  dataExt = get_data_from_table("extSignRequest")
+  dataset = list(data) + list(dataExt)
+  def parse_date(date_str):
+    return datetime.datetime.strptime(date_str, '%H:%M:%S %d/%m/%Y')
+  sorted_data = sorted(dataset, key=lambda x: parse_date(x['date']), reverse=True)
+  return jsonify({"success": True, "result": sorted_data})
 
 @app.route('/deleteRequest', methods=['DELETE'])
 def deleteRequest():
@@ -347,20 +436,34 @@ def deleteRequest():
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
     rows = cursor.fetchall()
-    cursor.execute('DELETE FROM public."signRequest" WHERE id = %s', (id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
     for row in rows:
       if row:
-        filename = row[1]
-        os.remove(rf"{BASE_FOLDER}{filename}")
+        os.remove(rf"{BASE_FOLDER}{row[1]}")
+        cursor.execute('DELETE FROM public."signRequest" WHERE id = %s', (id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        data = get_data_from_table("signRequest")
+        return jsonify({"success": True, "result": data})
+    cursor.close()
+    conn.close()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM public."extSignRequest" WHERE id = %s', (id,))
+    rows = cursor.fetchall()
+    for row in rows:
+      if row:
+        os.remove(rf"{BASE_FOLDER}{row[1]}")
+        cursor.execute('DELETE FROM public."extSignRequest" WHERE id = %s', (id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        data = get_data_from_table("signRequest")
+        return jsonify({"success": True, "result": data})
   except Exception as e:
     cursor.close()
     conn.close()
     return jsonify({"success": False, "error": str(e)})
-  data = get_data_from_table("signRequest")
-  return jsonify({"success": True, "result": data})
 
 @app.route('/refuseRequest', methods=['POST'])
 def refuseRequest():
@@ -376,8 +479,7 @@ def refuseRequest():
     for row in rows:
       if row:
         person = row[2]
-        person = person.split(" ")
-        cursor.execute('SELECT * FROM users WHERE telephone = %s', (person[2],))
+        cursor.execute('SELECT * FROM users WHERE telephone = %s', (person.split(" ")[-1],))
         rows1 = cursor.fetchall()
         for row1 in rows1:
           if row1:
@@ -391,23 +493,58 @@ def refuseRequest():
   data = get_data_from_table("signRequest")
   return jsonify({"success": True, "result": data})
 
+@app.route('/refuseExtRequest', methods=['POST'])
+def refuseExtRequest():
+  filename = request.args.get('filename')
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  try:
+    req = 'Update public."extSignRequest" set status = 2 WHERE filename = %s'
+    cursor.execute(req, (filename,))
+    conn.commit()
+    cursor.execute('SELECT * FROM public."extSignRequest" WHERE filename = %s', (filename,))
+    rows = cursor.fetchall()
+    for row in rows:
+      if row:
+        person = row[2]
+        cursor.execute('SELECT * FROM users WHERE telephone = %s', (person.split(" ")[-1],))
+        rows1 = cursor.fetchall()
+        for row1 in rows1:
+          if row1:
+            sendRefuseEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
+    cursor.close()
+    conn.close()
+  except Exception as e:
+    cursor.close()
+    conn.close()
+    return jsonify({"success": False, "error": str(e)})
+  return jsonify({"success": True})
+
 @app.route('/getPDF', methods=['POST'])
 def getPDF():
   id = request.args.get('id')
   try:
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM public."signRequest" WHERE id = %s', (id,))
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    filename = rf"{BASE_FOLDER}{rows[0][1]}"
-    with open(filename, "rb") as file:
+    data = get_data_from_table("signRequest")
+    dataExt = get_data_from_table("extSignRequest")
+    dataset = list(data) + list(dataExt)
+    for row in dataset:
+      if row['id'] == int(id):
+        filename = rf"{BASE_FOLDER}{row['filename']}"
+        with open(filename, "rb") as file:
+          data = base64.b64encode(file.read()).decode('utf-8')
+    return jsonify({"success": True, "result": data})
+  except Exception as e:
+    return jsonify({"success": False, "error": str(e)})
+
+@app.route('/getExtPDF', methods=['POST'])
+def getExtPDF():
+  filename = request.args.get('filename')
+  try:
+    file = rf"{BASE_FOLDER}{filename}"
+    with open(file, "rb") as file:
       data = base64.b64encode(file.read()).decode('utf-8')
     return jsonify({"success": True, "result": data})
   except Exception as e:
-    cursor.close()
-    conn.close()
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/changePassword', methods=['POST'])
@@ -439,4 +576,4 @@ Vérification des signatures
 """
 
 if __name__ == '__main__':
-  app.run(ssl_context=('ssl/cert.pem', 'ssl/key.pem'), host='0.0.0.0', port='8080')
+  app.run(debug=True, host='0.0.0.0', port='8080')
