@@ -10,7 +10,7 @@ def sendDigitEmail(to_address, digit):
   smtp_password = 'fhcw nipa qqsg lmwk'
   from_address = 'amstech.senegal@gmail.com'
 
-  subject = 'SignAuth - Code secret'
+  subject = 'Mandarga - Code secret'
   body = f"""
     <html>
       <body>
@@ -45,7 +45,7 @@ def sendInvitEmail(to_address, person, date):
   smtp_password = 'fhcw nipa qqsg lmwk'
   from_address = 'amstech.senegal@gmail.com'
 
-  subject = 'SignAuth - Demande de signature'
+  subject = 'Mandarga - Demande de signature'
   body = f"""
     <html>
       <body>
@@ -83,7 +83,7 @@ def sendSuccessEmail(to_address, date):
   smtp_password = 'fhcw nipa qqsg lmwk'
   from_address = 'amstech.senegal@gmail.com'
 
-  subject = 'SignAuth - Signature complète'
+  subject = 'Mandarga - Signature complète'
   body = f"""
     <html>
       <body>
@@ -120,7 +120,7 @@ def sendRefuseEmail(to_address, date):
   smtp_password = 'fhcw nipa qqsg lmwk'
   from_address = 'amstech.senegal@gmail.com'
 
-  subject = 'SignAuth - Signature refusée'
+  subject = 'Mandarga - Signature refusée'
   body = f"""
     <html>
       <body>
@@ -157,7 +157,7 @@ def sendExternalInvitEmail(to_address, person, date, url):
   smtp_password = 'fhcw nipa qqsg lmwk'
   from_address = 'amstech.senegal@gmail.com'
 
-  subject = 'SignAuth - Demande de signature'
+  subject = 'Mandarga - Demande de signature'
   body = f"""
     <html>
       <body>
