@@ -1,6 +1,13 @@
+from cryptography.hazmat.primitives import hashes
 from signServer import *
 
-def extractCert(pdf_file):
+
+def compare_certificates(cert1, cert2):
+  fingerprint1 = cert1.fingerprint(hashes.SHA256())
+  fingerprint2 = cert2.fingerprint(hashes.SHA256())
+  return fingerprint1 == fingerprint2
+
+def extractCert(pdf_file, certs):
   with open(pdf_file, 'rb') as doc:
     r = PdfFileReader(doc)
     sig = r.embedded_regular_signatures
@@ -8,8 +15,16 @@ def extractCert(pdf_file):
   for s in sig:
     cert_der = s.signer_cert.dump()
     cert_cryptography = x509.load_der_x509_certificate(cert_der, default_backend())
+    c = False
+    for cert in certs:
+      cert2 = x509.load_pem_x509_certificate(open(cert, 'rb').read(), default_backend())
+      if compare_certificates(cert_cryptography, cert2):
+        c = True
+        break
     res = listCertAttribut(cert_cryptography)
-    cert_data[f"{res['commonNameSubject']} [{res['emailAddressSubject']}] "] = reformat(res)
+    res = reformat(res)
+    res.update({"confiance": c})
+    cert_data[f"{res['commonNameSubject']} [{res['emailAddressSubject']}]"] = res
   return cert_data
 
 def listCertAttribut(cert):
@@ -39,9 +54,9 @@ def reformat(data):
   test("not_valid_after_utc", data, result)
   return result
 
-def test(string, data, result):
-  if string in data:
-    result.update({string: data[string]})
+def test(key, data, result):
+  if key in data:
+    result.update({key: data[key]})
 
 def reformatIssuer(data):
   result = {}

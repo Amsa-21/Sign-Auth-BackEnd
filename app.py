@@ -28,7 +28,16 @@ def get_data_from_pdf():
   file = request.files['fichier']
   filename = secure_filename(file.filename)
   file.save(filename)
-  certificate_data = extractCert(filename)
+  rows = get_data_from_table("certificates")
+  tab = []
+  i = 0
+  for row in rows:
+    cert_path = f"cert{i}.pem"
+    with open (cert_path, "wb") as f:
+      f.write(base64.b64decode(row["certificate"]))
+    tab.append(cert_path)
+    i += 1
+  certificate_data = extractCert(filename, tab)
   if len(certificate_data) > 0:
     isEmpty = False
     signs = find_signature(filename)
@@ -573,6 +582,7 @@ def changePassword():
 
 """
 Vérification des signatures
+Minimum 10 images pour faceScan
 """
 
 if __name__ == '__main__':

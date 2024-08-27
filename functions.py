@@ -10,7 +10,7 @@ detector = MTCNN()
 
 def clean():
   for fichier in os.listdir(os.curdir):
-    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg") or fichier.endswith(".p12") or fichier.endswith(".pem"):
+    if fichier.endswith(".pdf") or fichier.endswith(".png") or fichier.endswith(".jpg") or fichier.endswith(".p12") or fichier.endswith(".pem") or fichier.endswith(".der"):
       os.remove(fichier)
 
 def get_db_connection():
