@@ -196,22 +196,24 @@ def addNewUser():
   filename = secure_filename(video.filename)
   video.save(filename)
   res = faceScan(filename)
-  conn = get_db_connection()
-  cursor = conn.cursor()
-  try:
-    req = "INSERT INTO users (nom, prenom, date, email, password, telephone, organisation, poste, role) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
-    identity = f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}"
-    frames2db(identity, res, cursor)
-    conn.commit()
-    cursor.close()
-    conn.close()
-  except Exception as e:
-    cursor.close()
-    conn.close()
-    return jsonify({"success": False, "error": str(e)})
-  create_PKCS(identity, member_json['email'].capitalize(), f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()}", member_json['organisation'].capitalize())
-  return jsonify({"success": True})
+  if res:
+    try:
+      conn = get_db_connection()
+      cursor = conn.cursor()
+      req = "INSERT INTO users (nom, prenom, date, email, password, telephone, organisation, poste, role) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+      cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
+      identity = f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}"
+      frames2db(identity, res, cursor)
+      conn.commit()
+      cursor.close()
+      conn.close()
+    except Exception as e:
+      cursor.close()
+      conn.close()
+      return jsonify({"success": False, "error": str(e)})
+    create_PKCS(identity, member_json['email'].capitalize(), f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()}", member_json['organisation'].capitalize())
+    return jsonify({"success": True})
+  return jsonify({"success": False})
 
 @app.route('/editUser', methods=['POST'])
 def editUser():

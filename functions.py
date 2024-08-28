@@ -271,7 +271,10 @@ def faceScan(data):
       res.append(encoded_frame)
     except:
       pass
-  return res
+  if len(res) > 10:
+    return res
+  else:
+    return None
 
 def frames2db(user, res, cursor):
   req = "INSERT INTO trainset (person, picture) VALUES (%s, %s)"
