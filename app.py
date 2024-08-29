@@ -14,7 +14,8 @@ if not os.path.exists(BASE_FOLDER.split('/')[0]):
 
 clean()
 
-# model, encoder = refresh_model()
+model, encoder = refresh_model()
+cache = {"model": model, "encoder": encoder}
 
 @app.route('/')
 def hello():
@@ -207,6 +208,9 @@ def addNewUser():
       conn.commit()
       cursor.close()
       conn.close()
+      model, encoder = refresh_model()
+      cache["model"] = model
+      cache["encoder"] = encoder
     except Exception as e:
       cursor.close()
       conn.close()
@@ -255,11 +259,11 @@ def deleteUser():
 @app.route('/predict', methods=['POST'])
 def predict():
   face_img = request.form['image']
-  if model is not None:
-    face, person = prediction(face_img, model, encoder, refresh=True)
-    if face:
-      return jsonify({"success": True, "person": person, "face": face})
-  return jsonify({"success": False, "person": "No model trained", "face": None})
+  pers = request.form['person']
+  face, person = prediction(face_img, cache["model"], cache["encoder"], refresh=False)
+  if face and person == pers:
+    return jsonify({"success": True, "person": person, "face": face})
+  return jsonify({"success": False, "person": None, "face": None})
 
 @app.route('/signPDF', methods=['POST'])
 async def sign():
