@@ -1,4 +1,4 @@
-import re, psycopg2, secrets
+import re, psycopg2
 from mtcnn.mtcnn import MTCNN
 from certificateGenerator import *
 from signFinder import *
@@ -54,9 +54,6 @@ def getNameFromCode(code):
   cursor.close()
   conn.close()
   return name[0][1]
-
-def generate_token():
-  return secrets.token_hex(32)
 
 def get_data_from_table(table):
   conn = get_db_connection()

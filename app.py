@@ -1,5 +1,9 @@
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
+from flask_jwt_extended import (
+    JWTManager, create_access_token, create_refresh_token,
+    jwt_required, get_jwt_identity, get_jwt
+)
 from flask_cors import CORS
 from functions import *
 import json, uuid
@@ -9,6 +13,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
 FRONT_URL = "http://localhost:3000/extsign"
 BASE_FOLDER = ".database/"
+SECRET_KEY = b'\xb9\x82C)\x90\xca\xa1b\x89Q\x7f\xe4\x1c\xed\xd7I\xa7\t\xe7HW\xb36\xb1'
 if not os.path.exists(BASE_FOLDER.split('/')[0]):
   os.makedirs(BASE_FOLDER)
 
@@ -16,6 +21,12 @@ clean()
 
 model, encoder = refresh_model()
 cache = {"model": model, "encoder": encoder}
+
+app.config['JWT_SECRET_KEY'] = SECRET_KEY
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=15)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = datetime.timedelta(days=15)
+
+jwt = JWTManager(app)
 
 @app.route('/')
 def hello():
@@ -178,11 +189,37 @@ def login():
     password = request.json.get('password')
     for user in (users):
       if user["email"].lower() == username.lower() and user["password"] == password:
-        token = generate_token()
-        return jsonify({"success": True, "userToken": token, "username": user["prenom"] + " " + user["nom"], "telephone": user["telephone"], "role": user["role"]})
+        access_token = create_access_token(identity=user["email"])
+        refresh_token = create_refresh_token(identity=user["email"])
+        return jsonify({
+          "success": True,
+          "access_token": access_token,
+          "refresh_token": refresh_token,
+          "username": f"{user['prenom']} {user['nom']}",
+          "telephone": user["telephone"],
+          "role": user["role"]
+        })
     return jsonify({"success": False, "error": "Invalid credentials"})
-  except Exception as e:
+  except:
     return jsonify({"success": False, "error": "No database connexion"})
+
+@app.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    current_user = get_jwt_identity()
+    new_access_token = create_access_token(identity=current_user)
+    return jsonify({"access_token": new_access_token})
+
+@app.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+  return jsonify({"success": True, "msg": "Successfully logged out"})
+
+@app.route('/protected', methods=['GET'])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user)
 
 @app.route('/allUsers', methods=['GET'])
 def allUsers():
