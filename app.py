@@ -228,9 +228,9 @@ def check_if_token_in_blocklist(jwt_header, jwt_data):
 @app.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-  jti = get_jwt_identity()['jti']
+  jti = get_jwt_identity()
   blacklist.add(jti)
-  return jsonify({"msg": "Token has been revoked"}), 200
+  return jsonify({"msg": "Token has been revoked"})
 
 @app.route('/protected', methods=['GET'])
 @jwt_required()
@@ -419,7 +419,7 @@ async def externalSign():
             cursor.close()
             conn.close()
             clean()
-            jti = get_jwt_identity()['jti']
+            jti = get_jwt_identity()
             blacklist.add(jti)
             return jsonify({"success": True})
           cursor.close()
@@ -487,10 +487,10 @@ def addExternalRequest():
     conn.commit()
     for s in signer:
       name = f"{" ".join(user.split(" ")[:-1])}"
-      access_token = create_access_token(identity=user["email"])
-      refresh_token = create_refresh_token(identity=user["email"])
+      email = s.split(" ")[-1]
+      refresh_token = create_refresh_token(identity=email)
       url = f"{FRONT_URL}/{s.replace(" ", "_")}/{filename}/{refresh_token}"
-      sendExternalInvitEmail(to_address=s.split(" ")[-1], person=name, date=date, url=url)
+      sendExternalInvitEmail(to_address=email, person=name, date=date, url=url)
   except Exception as e:
     cursor.close()
     conn.close()
@@ -596,14 +596,14 @@ def refuseExtRequest():
         rows1 = cursor.fetchall()
         for row1 in rows1:
           if row1:
-            sendRefuseEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
+            sendRefuseEmail(to_address=row1[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
     cursor.close()
     conn.close()
   except Exception as e:
     cursor.close()
     conn.close()
     return jsonify({"success": False, "error": str(e)})
-  jti = get_jwt_identity()['jti']
+  jti = get_jwt_identity()
   blacklist.add(jti)
   return jsonify({"success": True})
 
