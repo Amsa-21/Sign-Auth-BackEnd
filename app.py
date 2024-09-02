@@ -2,7 +2,7 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
-    jwt_required, get_jwt_identity, get_jwt
+    jwt_required, get_jwt_identity
 )
 from flask_cors import CORS
 from functions import *
@@ -28,6 +28,8 @@ app.config['JWT_REFRESH_TOKEN_EXPIRES'] = datetime.timedelta(days=15)
 
 jwt = JWTManager(app)
 
+blacklist = set()
+
 @app.route('/')
 def hello():
   return """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
@@ -36,6 +38,7 @@ def hello():
           """
 
 @app.route('/metadatafrompdf', methods=['POST'])
+@jwt_required()
 def get_data_from_pdf():
   file = request.files['fichier']
   filename = secure_filename(file.filename)
@@ -64,6 +67,7 @@ def get_data_from_pdf():
   return jsonify(res)
 
 @app.route('/addMember', methods=['POST'])
+@jwt_required()
 def addNewMember():
   member = request.form['member']
   member_json = json.loads(member)
@@ -83,6 +87,7 @@ def addNewMember():
   return jsonify({"success": True, "result": data})
 
 @app.route('/data', methods=['GET'])
+@jwt_required()
 def get_data_from_postgres():
   conn = get_db_connection()
   cursor = conn.cursor()
@@ -101,11 +106,13 @@ def get_data_from_postgres():
   return jsonify({"result": data})
 
 @app.route('/ownMember', methods=['GET'])
+@jwt_required()
 def getMember():
   data = get_data_from_table("ownTrustList")
   return jsonify({"result": data})
 
 @app.route('/editOne', methods=['POST'])
+@jwt_required()
 def editOne():
   member = request.form['member']
   member_json = json.loads(member)
@@ -125,6 +132,7 @@ def editOne():
   return jsonify({"success": True, "result": data})
 
 @app.route('/deleteOne', methods=['DELETE'])
+@jwt_required()
 def deleteOne():
   id = request.args.get('id')
   conn = get_db_connection()
@@ -143,6 +151,7 @@ def deleteOne():
   return jsonify({"success": True, "result": data})
 
 @app.route('/getPDFInfo', methods=['GET', 'POST'])
+@jwt_required()
 def getPDFInfo():
   file = request.files['fichier']
   filename = secure_filename(file.filename)
@@ -163,6 +172,7 @@ def getPDFInfo():
   return jsonify(res)
 
 @app.route('/addMemberFromAnalysis', methods=['POST'])
+@jwt_required()
 def addMemberFromAnalysis():
   member = request.form['member']
   member_json = json.loads(member)
@@ -206,22 +216,30 @@ def login():
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    current_user = get_jwt_identity()
-    new_access_token = create_access_token(identity=current_user)
-    return jsonify({"access_token": new_access_token})
+  current_user = get_jwt_identity()
+  new_access_token = create_access_token(identity=current_user)
+  return jsonify({"access_token": new_access_token})
+
+@jwt.token_in_blocklist_loader
+def check_if_token_in_blocklist(jwt_header, jwt_data):
+  jti = jwt_data['jti']
+  return jti in blacklist
 
 @app.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-  return jsonify({"success": True, "msg": "Successfully logged out"})
+  jti = get_jwt_identity()['jti']
+  blacklist.add(jti)
+  return jsonify({"msg": "Token has been revoked"}), 200
 
 @app.route('/protected', methods=['GET'])
 @jwt_required()
 def protected():
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user)
+  current_user = get_jwt_identity()
+  return jsonify(logged_in_as=current_user)
 
 @app.route('/allUsers', methods=['GET'])
+@jwt_required()
 def allUsers():
   data = get_data_from_table("users")
   return jsonify({"result": data})
@@ -257,6 +275,7 @@ def addNewUser():
   return jsonify({"success": False})
 
 @app.route('/editUser', methods=['POST'])
+@jwt_required()
 def editUser():
   member = request.form['member']
   member_json = json.loads(member)
@@ -276,6 +295,7 @@ def editUser():
   return jsonify({"success": True, "result": data})
 
 @app.route('/deleteUser', methods=['DELETE'])
+@jwt_required()
 def deleteUser():
   id = request.args.get('id')
   conn = get_db_connection()
@@ -294,6 +314,7 @@ def deleteUser():
   return jsonify({"success": True, "result": data})
 
 @app.route('/predict', methods=['POST'])
+@jwt_required()
 def predict():
   face_img = request.form['image']
   pers = request.form['person']
@@ -303,6 +324,7 @@ def predict():
   return jsonify({"success": False, "person": None, "face": None})
 
 @app.route('/signPDF', methods=['POST'])
+@jwt_required()
 async def sign():
   id = request.form['id']
   user = request.form['user']
@@ -355,6 +377,7 @@ async def sign():
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/externalSignPDF', methods=['POST'])
+@jwt_required()
 async def externalSign():
   name = request.form['user']
   file = request.form['filename']
@@ -396,6 +419,8 @@ async def externalSign():
             cursor.close()
             conn.close()
             clean()
+            jti = get_jwt_identity()['jti']
+            blacklist.add(jti)
             return jsonify({"success": True})
           cursor.close()
           conn.close()
@@ -410,6 +435,7 @@ async def externalSign():
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/addRequest', methods=['POST'])
+@jwt_required()
 def addRequest():
   file = request.files['fichier']
   user = request.form['demandeur']
@@ -441,6 +467,7 @@ def addRequest():
   return jsonify({"success": True})
 
 @app.route('/addExternalRequest', methods=['POST'])
+@jwt_required()
 def addExternalRequest():
   file = request.files['fichier']
   user = request.form['demandeur']
@@ -460,7 +487,9 @@ def addExternalRequest():
     conn.commit()
     for s in signer:
       name = f"{" ".join(user.split(" ")[:-1])}"
-      url = f"{FRONT_URL}/{s.replace(" ", "_")}/{filename}"
+      access_token = create_access_token(identity=user["email"])
+      refresh_token = create_refresh_token(identity=user["email"])
+      url = f"{FRONT_URL}/{s.replace(" ", "_")}/{filename}/{refresh_token}"
       sendExternalInvitEmail(to_address=s.split(" ")[-1], person=name, date=date, url=url)
   except Exception as e:
     cursor.close()
@@ -471,6 +500,7 @@ def addExternalRequest():
   return jsonify({"success": True})
 
 @app.route('/allRequest', methods=['GET'])
+@jwt_required()
 def allRequest():
   data = get_data_from_table("signRequest")
   dataExt = get_data_from_table("extSignRequest")
@@ -481,6 +511,7 @@ def allRequest():
   return jsonify({"success": True, "result": sorted_data})
 
 @app.route('/deleteRequest', methods=['DELETE'])
+@jwt_required()
 def deleteRequest():
   id = request.args.get('id')
   try:
@@ -518,6 +549,7 @@ def deleteRequest():
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/refuseRequest', methods=['POST'])
+@jwt_required()
 def refuseRequest():
   id = request.args.get('id')
   conn = get_db_connection()
@@ -546,6 +578,7 @@ def refuseRequest():
   return jsonify({"success": True, "result": data})
 
 @app.route('/refuseExtRequest', methods=['POST'])
+@jwt_required()
 def refuseExtRequest():
   filename = request.args.get('filename')
   conn = get_db_connection()
@@ -570,9 +603,12 @@ def refuseExtRequest():
     cursor.close()
     conn.close()
     return jsonify({"success": False, "error": str(e)})
+  jti = get_jwt_identity()['jti']
+  blacklist.add(jti)
   return jsonify({"success": True})
 
 @app.route('/getPDF', methods=['POST'])
+@jwt_required()
 def getPDF():
   id = request.args.get('id')
   try:
@@ -589,6 +625,7 @@ def getPDF():
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/getExtPDF', methods=['POST'])
+@jwt_required()
 def getExtPDF():
   filename = request.args.get('filename')
   try:
@@ -600,6 +637,7 @@ def getExtPDF():
     return jsonify({"success": False, "error": str(e)})
 
 @app.route('/changePassword', methods=['POST'])
+@jwt_required()
 def changePassword():
   member = request.form['datas']
   member_json = json.loads(member)
@@ -622,11 +660,6 @@ def changePassword():
     conn.close()
     return jsonify({"success": False, "error": str(e)})
 
-
-"""
-Vérification des signatures
-Minimum 10 images pour faceScan
-"""
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port='8080')

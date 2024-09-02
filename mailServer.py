@@ -164,7 +164,7 @@ def sendExternalInvitEmail(to_address, person, date, url):
         <p>Vous avez une nouvelle demande de signature.</p>
         <br/>
         <p><b>{person}</b> vous invite à signer un document.</p>
-        <p>La demande est effective depuis le {date.split(" ")[1]} à {date.split(" ")[0]}.</p>
+        <p>La demande est effective depuis le {date.split(" ")[0]} à {date.split(" ")[1]} pour un délai de 15 jours.</p>
         <p>Cliquez sur le lien suivant pour signer le document: {url}.</p>
       </body>
     </html>
