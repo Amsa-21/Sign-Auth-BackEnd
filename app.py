@@ -32,10 +32,11 @@ blacklist = set()
 
 @app.route('/')
 def hello():
-  return """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
-              <h1>Flask API Running...</h1>
-            </div>
-          """
+  return (
+     """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
+          <h1>Flask API Running...</h1>
+        </div>
+     """)
 
 @app.route('/metadatafrompdf', methods=['POST'])
 @jwt_required()
@@ -567,7 +568,7 @@ def refuseRequest():
         rows1 = cursor.fetchall()
         for row1 in rows1:
           if row1:
-            sendRefuseEmail(to_address=row[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
+            sendRefuseEmail(to_address=row1[4], date=datetime.datetime.now(datetime.UTC).strftime('%H:%M:%S %d/%m/%Y'))
     cursor.close()
     conn.close()
   except Exception as e:
