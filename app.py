@@ -14,7 +14,7 @@ app.json.sort_keys = False
 FRONT_URL = "http://localhost:3000/extsign"
 BASE_FOLDER = ".database/"
 SECRET_KEY = b'\xb9\x82C)\x90\xca\xa1b\x89Q\x7f\xe4\x1c\xed\xd7I\xa7\t\xe7HW\xb36\xb1'
-if not os.path.exists(BASE_FOLDER.split('/')[0]):
+if not os.path.exists(BASE_FOLDER.split("/")[0]):
   os.makedirs(BASE_FOLDER)
 
 clean()
@@ -30,7 +30,7 @@ jwt = JWTManager(app)
 
 blacklist = set()
 
-@app.route('/')
+@app.route('/api/')
 def hello():
   return (
      """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
@@ -38,7 +38,7 @@ def hello():
         </div>
      """)
 
-@app.route('/metadatafrompdf', methods=['POST'])
+@app.route('/api/metadatafrompdf', methods=['POST'])
 @jwt_required()
 def get_data_from_pdf():
   file = request.files['fichier']
@@ -67,7 +67,7 @@ def get_data_from_pdf():
   clean()
   return jsonify(res)
 
-@app.route('/addMember', methods=['POST'])
+@app.route('/api/addMember', methods=['POST'])
 @jwt_required()
 def addNewMember():
   member = request.form['member']
@@ -87,7 +87,7 @@ def addNewMember():
   data = get_data_from_table("ownTrustList")
   return jsonify({"success": True, "result": data})
 
-@app.route('/data', methods=['GET'])
+@app.route('/api/data', methods=['GET'])
 @jwt_required()
 def get_data_from_postgres():
   conn = get_db_connection()
@@ -106,13 +106,13 @@ def get_data_from_postgres():
     })
   return jsonify({"result": data})
 
-@app.route('/ownMember', methods=['GET'])
+@app.route('/api/ownMember', methods=['GET'])
 @jwt_required()
 def getMember():
   data = get_data_from_table("ownTrustList")
   return jsonify({"result": data})
 
-@app.route('/editOne', methods=['POST'])
+@app.route('/api/editOne', methods=['POST'])
 @jwt_required()
 def editOne():
   member = request.form['member']
@@ -132,7 +132,7 @@ def editOne():
   data = get_data_from_table("ownTrustList")
   return jsonify({"success": True, "result": data})
 
-@app.route('/deleteOne', methods=['DELETE'])
+@app.route('/api/deleteOne', methods=['DELETE'])
 @jwt_required()
 def deleteOne():
   id = request.args.get('id')
@@ -151,7 +151,7 @@ def deleteOne():
   data = get_data_from_table("ownTrustList")
   return jsonify({"success": True, "result": data})
 
-@app.route('/getPDFInfo', methods=['GET', 'POST'])
+@app.route('/api/getPDFInfo', methods=['GET', 'POST'])
 @jwt_required()
 def getPDFInfo():
   file = request.files['fichier']
@@ -172,7 +172,7 @@ def getPDFInfo():
   clean()
   return jsonify(res)
 
-@app.route('/addMemberFromAnalysis', methods=['POST'])
+@app.route('/api/addMemberFromAnalysis', methods=['POST'])
 @jwt_required()
 def addMemberFromAnalysis():
   member = request.form['member']
@@ -192,7 +192,7 @@ def addMemberFromAnalysis():
   conn.close()
   return jsonify({"success": True, "error": None})
 
-@app.route('/login', methods=['POST'])
+@app.route('/api/login', methods=['POST'])
 def login():
   try:
     users = get_data_from_table("users")
@@ -214,7 +214,7 @@ def login():
   except:
     return jsonify({"success": False, "error": "No database connexion"})
 
-@app.route('/refresh', methods=['POST'])
+@app.route('/api/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
   current_user = get_jwt_identity()
@@ -226,26 +226,26 @@ def check_if_token_in_blocklist(jwt_header, jwt_data):
   jti = jwt_data['jti']
   return jti in blacklist
 
-@app.route('/logout', methods=['POST'])
+@app.route('/api/logout', methods=['POST'])
 @jwt_required()
 def logout():
   jti = get_jwt_identity()
   blacklist.add(jti)
   return jsonify({"msg": "Token has been revoked"})
 
-@app.route('/protected', methods=['GET'])
+@app.route('/api/protected', methods=['GET'])
 @jwt_required()
 def protected():
   current_user = get_jwt_identity()
   return jsonify(logged_in_as=current_user)
 
-@app.route('/allUsers', methods=['GET'])
+@app.route('/api/allUsers', methods=['GET'])
 @jwt_required()
 def allUsers():
   data = get_data_from_table("users")
   return jsonify({"result": data})
 
-@app.route('/addUser', methods=['POST'])
+@app.route('/api/addUser', methods=['POST'])
 def addNewUser():
   member = request.form['user']
   video = request.files['file']
@@ -275,7 +275,7 @@ def addNewUser():
     return jsonify({"success": True})
   return jsonify({"success": False})
 
-@app.route('/editUser', methods=['POST'])
+@app.route('/api/editUser', methods=['POST'])
 @jwt_required()
 def editUser():
   member = request.form['member']
@@ -295,7 +295,7 @@ def editUser():
   data = get_data_from_table("users")
   return jsonify({"success": True, "result": data})
 
-@app.route('/deleteUser', methods=['DELETE'])
+@app.route('/api/deleteUser', methods=['DELETE'])
 @jwt_required()
 def deleteUser():
   id = request.args.get('id')
@@ -314,7 +314,7 @@ def deleteUser():
   data = get_data_from_table("users")
   return jsonify({"success": True, "result": data})
 
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 @jwt_required()
 def predict():
   face_img = request.form['image']
@@ -324,7 +324,7 @@ def predict():
     return jsonify({"success": True, "person": person, "face": face})
   return jsonify({"success": False, "person": None, "face": None})
 
-@app.route('/signPDF', methods=['POST'])
+@app.route('/api/signPDF', methods=['POST'])
 @jwt_required()
 async def sign():
   id = request.form['id']
@@ -377,7 +377,7 @@ async def sign():
     clean()
     return jsonify({"success": False, "error": str(e)})
 
-@app.route('/externalSignPDF', methods=['POST'])
+@app.route('/api/externalSignPDF', methods=['POST'])
 @jwt_required()
 async def externalSign():
   name = request.form['user']
@@ -435,7 +435,7 @@ async def externalSign():
     clean()
     return jsonify({"success": False, "error": str(e)})
 
-@app.route('/addRequest', methods=['POST'])
+@app.route('/api/addRequest', methods=['POST'])
 @jwt_required()
 def addRequest():
   file = request.files['fichier']
@@ -467,7 +467,7 @@ def addRequest():
   conn.close()
   return jsonify({"success": True})
 
-@app.route('/addExternalRequest', methods=['POST'])
+@app.route('/api/addExternalRequest', methods=['POST'])
 @jwt_required()
 def addExternalRequest():
   file = request.files['fichier']
@@ -500,7 +500,7 @@ def addExternalRequest():
   conn.close()
   return jsonify({"success": True})
 
-@app.route('/allRequest', methods=['GET'])
+@app.route('/api/allRequest', methods=['GET'])
 @jwt_required()
 def allRequest():
   data = get_data_from_table("signRequest")
@@ -511,7 +511,7 @@ def allRequest():
   sorted_data = sorted(dataset, key=lambda x: parse_date(x['date']), reverse=True)
   return jsonify({"success": True, "result": sorted_data})
 
-@app.route('/deleteRequest', methods=['DELETE'])
+@app.route('/api/deleteRequest', methods=['DELETE'])
 @jwt_required()
 def deleteRequest():
   id = request.args.get('id')
@@ -549,7 +549,7 @@ def deleteRequest():
     conn.close()
     return jsonify({"success": False, "error": str(e)})
 
-@app.route('/refuseRequest', methods=['POST'])
+@app.route('/api/refuseRequest', methods=['POST'])
 @jwt_required()
 def refuseRequest():
   id = request.args.get('id')
@@ -578,7 +578,7 @@ def refuseRequest():
   data = get_data_from_table("signRequest")
   return jsonify({"success": True, "result": data})
 
-@app.route('/refuseExtRequest', methods=['POST'])
+@app.route('/api/refuseExtRequest', methods=['POST'])
 @jwt_required()
 def refuseExtRequest():
   filename = request.args.get('filename')
@@ -608,7 +608,7 @@ def refuseExtRequest():
   blacklist.add(jti)
   return jsonify({"success": True})
 
-@app.route('/getPDF', methods=['POST'])
+@app.route('/api/getPDF', methods=['POST'])
 @jwt_required()
 def getPDF():
   id = request.args.get('id')
@@ -625,7 +625,7 @@ def getPDF():
   except Exception as e:
     return jsonify({"success": False, "error": str(e)})
 
-@app.route('/getExtPDF', methods=['POST'])
+@app.route('/api/getExtPDF', methods=['POST'])
 @jwt_required()
 def getExtPDF():
   filename = request.args.get('filename')
@@ -637,7 +637,7 @@ def getExtPDF():
   except Exception as e:
     return jsonify({"success": False, "error": str(e)})
 
-@app.route('/changePassword', methods=['POST'])
+@app.route('/api/changePassword', methods=['POST'])
 @jwt_required()
 def changePassword():
   member = request.form['datas']
