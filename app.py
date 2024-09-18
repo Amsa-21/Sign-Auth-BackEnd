@@ -11,7 +11,7 @@ import json, uuid
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
-FRONT_URL = "http://localhost:3000/extsign"
+FRONT_URL = "https://3.237.11.62/extsign"
 BASE_FOLDER = ".database/"
 SECRET_KEY = b'\xb9\x82C)\x90\xca\xa1b\x89Q\x7f\xe4\x1c\xed\xd7I\xa7\t\xe7HW\xb36\xb1'
 if not os.path.exists(BASE_FOLDER.split("/")[0]):
