@@ -24,7 +24,7 @@ cache = {"model": model, "encoder": encoder}
 
 app.config['JWT_SECRET_KEY'] = SECRET_KEY
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=15)
-app.config['JWT_REFRESH_TOKEN_EXPIRES'] = datetime.timedelta(days=15)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 
 jwt = JWTManager(app)
 
@@ -32,11 +32,11 @@ blacklist = set()
 
 @app.route('/api/')
 def hello():
-  return (
-     """<div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
-          <h1>Flask API Running...</h1>
-        </div>
-     """)
+  return ("""
+            <div style='display: flex; justify-content: center; align-items: center; height: 100vh;'>
+              <h1>Flask API Running...</h1>
+            </div>
+          """)
 
 @app.route('/api/metadatafrompdf', methods=['POST'])
 @jwt_required()
@@ -198,18 +198,28 @@ def login():
     users = get_data_from_table("users")
     username = request.json.get('email')
     password = request.json.get('password')
+    remind = request.json.get('remind')
     for user in (users):
       if user["email"].lower() == username.lower() and user["password"] == password:
         access_token = create_access_token(identity=user["email"])
-        refresh_token = create_refresh_token(identity=user["email"])
-        return jsonify({
-          "success": True,
-          "access_token": access_token,
-          "refresh_token": refresh_token,
-          "username": f"{user['prenom']} {user['nom']}",
-          "telephone": user["telephone"],
-          "role": user["role"]
-        })
+        if remind:
+          refresh_token = create_refresh_token(identity=user["email"])
+          return jsonify({
+            "success": True,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "username": f"{user['prenom']} {user['nom']}",
+            "telephone": user["telephone"],
+            "role": user["role"]
+          })
+        else:
+          return jsonify({
+            "success": True,
+            "access_token": access_token,
+            "username": f"{user['prenom']} {user['nom']}",
+            "telephone": user["telephone"],
+            "role": user["role"]
+          })
     return jsonify({"success": False, "error": "Invalid credentials"})
   except:
     return jsonify({"success": False, "error": "No database connexion"})
@@ -661,6 +671,9 @@ def changePassword():
     conn.close()
     return jsonify({"success": False, "error": str(e)})
 
-
 if __name__ == '__main__':
-  app.run(ssl_context='adhoc', host='0.0.0.0', port='8000')
+  ssl_context = (
+    'ssl/cert.pem',
+    'ssl/key.pem'
+  )
+  app.run(ssl_context=ssl_context, host='0.0.0.0', port='8000')
