@@ -279,12 +279,9 @@ def frames2db(user, res, cursor):
     cursor.execute(req, (user, pic))
 
 def refresh_model():
-  try:
-    conn = get_db_connection()
-    data = get_trainset(conn)
-    return get_trained_model(data)
-  except:
-    return None
+  conn = get_db_connection()
+  data = get_trainset(conn)
+  return get_trained_model(data)
 
 def base64ToImg(base64_string):
   try:

@@ -2,14 +2,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 
+smtp_server = 'smtp.gmail.com'
+smtp_port = 587
+smtp_user = 'amstech.senegal@gmail.com'
+smtp_password = 'fhcw nipa qqsg lmwk'
+from_address = 'amstech.senegal@gmail.com'
 
 def sendDigitEmail(to_address, digit):
-  smtp_server = 'smtp.gmail.com'
-  smtp_port = 587
-  smtp_user = 'amstech.senegal@gmail.com'
-  smtp_password = 'fhcw nipa qqsg lmwk'
-  from_address = 'amstech.senegal@gmail.com'
-
   subject = 'Mandarga - Code secret'
   body = f"""
     <html>
@@ -39,12 +38,6 @@ def sendDigitEmail(to_address, digit):
     server.quit()
 
 def sendInvitEmail(to_address, person, date):
-  smtp_server = 'smtp.gmail.com'
-  smtp_port = 587
-  smtp_user = 'amstech.senegal@gmail.com'
-  smtp_password = 'fhcw nipa qqsg lmwk'
-  from_address = 'amstech.senegal@gmail.com'
-
   subject = 'Mandarga - Demande de signature'
   body = f"""
     <html>
@@ -77,12 +70,6 @@ def sendInvitEmail(to_address, person, date):
     server.quit()
 
 def sendSuccessEmail(to_address, date):
-  smtp_server = 'smtp.gmail.com'
-  smtp_port = 587
-  smtp_user = 'amstech.senegal@gmail.com'
-  smtp_password = 'fhcw nipa qqsg lmwk'
-  from_address = 'amstech.senegal@gmail.com'
-
   subject = 'Mandarga - Signature complète'
   body = f"""
     <html>
@@ -114,12 +101,6 @@ def sendSuccessEmail(to_address, date):
     server.quit()
 
 def sendRefuseEmail(to_address, date):
-  smtp_server = 'smtp.gmail.com'
-  smtp_port = 587
-  smtp_user = 'amstech.senegal@gmail.com'
-  smtp_password = 'fhcw nipa qqsg lmwk'
-  from_address = 'amstech.senegal@gmail.com'
-
   subject = 'Mandarga - Signature refusée'
   body = f"""
     <html>
@@ -151,12 +132,6 @@ def sendRefuseEmail(to_address, date):
     server.quit()
 
 def sendExternalInvitEmail(to_address, person, date, url):
-  smtp_server = 'smtp.gmail.com'
-  smtp_port = 587
-  smtp_user = 'amstech.senegal@gmail.com'
-  smtp_password = 'fhcw nipa qqsg lmwk'
-  from_address = 'amstech.senegal@gmail.com'
-
   subject = 'Mandarga - Demande de signature'
   body = f"""
     <html>

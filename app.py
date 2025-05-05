@@ -11,7 +11,7 @@ import json, uuid
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 app.json.sort_keys = False
-FRONT_URL = "https://3.237.11.62/extsign"
+FRONT_URL = "https://35.238.219.19/extsign"
 BASE_FOLDER = ".database/"
 SECRET_KEY = b'\xb9\x82C)\x90\xca\xa1b\x89Q\x7f\xe4\x1c\xed\xd7I\xa7\t\xe7HW\xb36\xb1'
 if not os.path.exists(BASE_FOLDER.split("/")[0]):
@@ -255,6 +255,22 @@ def allUsers():
   data = get_data_from_table("users")
   return jsonify({"result": data})
 
+def faceScan(data):
+  frames = blob_to_mp4(data)
+  res = []
+  for _, frame in enumerate(frames):
+    frame = faceDetector(frame)
+    try:
+      _, encoded_frame = cv2.imencode('.jpg', frame)
+      encoded_frame = base64.b64encode(encoded_frame).decode('utf-8')
+      res.append(encoded_frame)
+    except:
+      pass
+  if len(res) > 10:
+    return res
+  else:
+    return None
+  
 @app.route('/api/addUser', methods=['POST'])
 def addNewUser():
   member = request.form['user']
@@ -268,7 +284,9 @@ def addNewUser():
       conn = get_db_connection()
       cursor = conn.cursor()
       req = "INSERT INTO users (nom, prenom, date, email, password, telephone, organisation, poste, role) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-      cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(), member_json['date'], member_json['email'].capitalize(), member_json['password'], member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
+      cursor.execute(req, (member_json['nom'].upper(), member_json['prenom'].capitalize(),
+                            member_json['date'], member_json['email'].capitalize(), member_json['password'],
+                            member_json['numero'], member_json['organisation'].capitalize(), member_json['poste'].capitalize(), "User"))  
       identity = f"{member_json['prenom'].capitalize()} {member_json['nom'].upper()} {member_json['numero']}"
       frames2db(identity, res, cursor)
       conn.commit()
@@ -324,6 +342,21 @@ def deleteUser():
   data = get_data_from_table("users")
   return jsonify({"success": True, "result": data})
 
+def prediction(face, model, encoder, refresh: bool):
+  if refresh:
+    model, encoder = refresh_model()
+  face = base64ToImg(face)
+  faceD = faceDetector(face)
+  if faceD is not None:
+    img = image_to_base64(cv2.cvtColor(faceD, cv2.COLOR_BGR2RGB))
+    res, prob = predict_face(faceD, model, encoder)
+    print(res, prob)
+    if prob > .5:
+      return img, res
+    else:
+      return None, "Unrecognized face !"
+  return None, "No face detected !"
+
 @app.route('/api/predict', methods=['POST'])
 @jwt_required()
 def predict():
@@ -364,7 +397,8 @@ async def sign():
           savePicture(ident, img)
           conn = get_db_connection()
           cursor = conn.cursor()
-          cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s, signatures = %s WHERE id = %s', (int(cursign)+1, (int(cursign)+1)//int(numsigners), signatures, id))
+          cursor.execute('UPDATE public."signRequest" set cursign = %s, status = %s, signatures = %s WHERE id = %s',
+                          (int(cursign)+1, (int(cursign)+1)//int(numsigners), signatures, id))
           conn.commit()
           if((int(cursign)+1)//int(numsigners) == 1):
             person = person.split(" ")
@@ -408,7 +442,7 @@ async def externalSign():
     certs = get_data_from_table("certificates")
     for cert in certs:
       if cert["person"] == "Externe":
-        user = f"{" ".join(name.split("_")[:-1])} <{name.split("_")[-1]}>"
+        user = f"{' '.join(name.split('_')[:-1])} <{name.split('_')[-1]}>"
         filename = rf"{BASE_FOLDER}{file}"
         face = base64ToImg(face)
         faceD = faceDetector(face)
@@ -450,7 +484,7 @@ async def externalSign():
 def addRequest():
   file = request.files['fichier']
   user = request.form['demandeur']
-  filename = f"Demande-{"_".join(user.split(" ")[:-1])}_{uuid.uuid4()}.pdf"
+  filename = f"Demande-{'_'.join(user.split(' ')[:-1])}_{uuid.uuid4()}.pdf"
   file.save(f"{BASE_FOLDER}{filename}")
   signers = request.form['signataires']
   obj = request.form['objet']
@@ -468,7 +502,7 @@ def addRequest():
       chaine=s.split(' ')
       cursor.execute('SELECT * FROM "users" WHERE telephone = %s', (chaine[-1],))
       rows = cursor.fetchall()
-      sendInvitEmail(to_address=rows[0][4], person=f"{" ".join(user.split(" ")[:-1])}", date=date)
+      sendInvitEmail(to_address=rows[0][4], person=f"{' '.join(user.split(' ')[:-1])}", date=date)
   except Exception as e:
     cursor.close()
     conn.close()
@@ -497,10 +531,10 @@ def addExternalRequest():
     cursor.execute(insert_query, (filename, user, signer, obj, comment, date, 0, len(signer), 0, signatures))
     conn.commit()
     for s in signer:
-      name = f"{" ".join(user.split(" ")[:-1])}"
+      name = f"{' '.join(user.split(' ')[:-1])}"
       email = s.split(" ")[-1]
       refresh_token = create_refresh_token(identity=email)
-      url = f"{FRONT_URL}/{s.replace(" ", "_")}/{filename}/{refresh_token}"
+      url = f"{FRONT_URL}/{s.replace(' ', '_')}/{filename}/{refresh_token}"
       sendExternalInvitEmail(to_address=email, person=name, date=date, url=url)
   except Exception as e:
     cursor.close()
@@ -676,4 +710,4 @@ if __name__ == '__main__':
     'ssl/cert.pem',
     'ssl/key.pem'
   )
-  app.run(ssl_context=ssl_context, host='0.0.0.0', port='8000')
+  app.run(ssl_context=ssl_context, host='0.0.0.0', port='8000', debug=True)
